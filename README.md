@@ -1,6 +1,15 @@
+<div align="center">
+
 # tidygo
 
+[![CI](https://github.com/lugassawan/tidygo/actions/workflows/test.yml/badge.svg)](https://github.com/lugassawan/tidygo/actions/workflows/test.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/lugassawan/tidygo.svg)](https://pkg.go.dev/github.com/lugassawan/tidygo)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lugassawan/tidygo)](https://goreportcard.com/report/github.com/lugassawan/tidygo)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code ordering and structural conventions in Go source files.
+
+</div>
 
 ## Analyzers
 
@@ -51,17 +60,18 @@ golangci-lint custom
 Prerequisites: [mise](https://mise.jdx.dev/)
 
 ```sh
-mise install && mise trust && make init
+make init
 ```
 
 | Target     | Description                                       |
 |------------|---------------------------------------------------|
+| `init`     | Install tools, trust mise config, set up git hooks|
 | `build`    | Build custom golangci-lint with tidygo plugin     |
 | `lint`     | Build and run golangci-lint (dogfooding)          |
 | `fmt`      | Format all Go files with gofmt and golines        |
 | `test`     | Run all tests                                     |
 | `coverage` | Generate HTML coverage report                     |
-| `init`     | Configure git hooks and trust mise config         |
+| `release`  | Tag and push a semver release (VERSION=vX.Y.Z)   |
 
 ## License
 
