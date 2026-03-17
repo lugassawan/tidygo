@@ -28,6 +28,6 @@ ifndef VERSION
 	$(error VERSION is required. Usage: make release VERSION=v1.0.0)
 endif
 	@echo "$(VERSION)" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$$' || (echo "ERROR: VERSION must match vX.Y.Z" && exit 1)
-	git tag -a $(VERSION) -m "Release $(VERSION)"
-	git push origin $(VERSION)
+	git tag -a "$(VERSION)" -m "Release $(VERSION)"
+	git push origin "$(VERSION)"
 	@echo "Tagged and pushed $(VERSION)"
