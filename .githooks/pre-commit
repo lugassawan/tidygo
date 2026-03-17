@@ -25,8 +25,11 @@ if [[ -n "$STAGED_GO_FILES" ]]; then
   echo "$STAGED_GO_FILES" | xargs git add
 fi
 
-# Run golangci-lint
-echo "Running golangci-lint..."
-golangci-lint run ./...
+# Run golangci-lint (skip if no Go files exist yet)
+GO_FILES=$(find . -name '*.go' -not -path './vendor/*' 2>/dev/null)
+if [[ -n "$GO_FILES" ]]; then
+  echo "Running golangci-lint..."
+  golangci-lint run ./...
+fi
 
 echo "Pre-commit checks passed."
