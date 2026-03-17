@@ -31,22 +31,21 @@ linters:
     - lll
     - wastedassign
     - whitespace
-
-linters-settings:
-  gocognit:
-    min-complexity: 15
-  lll:
-    line-length: 120
-  dupl:
-    threshold: 150
-  revive:
-    rules:
-      - name: unused-parameter
-        disabled: true
-      - name: exported
-        disabled: true
-      - name: package-comments
-        disabled: true
+  settings:
+    gocognit:
+      min-complexity: 15
+    lll:
+      line-length: 120
+    dupl:
+      threshold: 150
+    revive:
+      rules:
+        - name: unused-parameter
+          disabled: true
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
 
 exclusions:
   presets:
