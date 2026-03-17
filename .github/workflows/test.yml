@@ -42,9 +42,23 @@ jobs:
           fi
           echo "Coverage check passed: ${COVERAGE}%"
 
+  # Gate job for branch protection — passes when all jobs pass or are correctly skipped.
+  # Required because GitHub treats skipped required checks as "not satisfied".
   ci:
     runs-on: ubuntu-latest
+    name: CI
     needs: [lint, test, coverage]
+    if: always()
     steps:
-      - name: All checks passed
-        run: echo "CI passed successfully."
+      - name: Check results
+        env:
+          LINT: ${{ needs.lint.result }}
+          TEST: ${{ needs.test.result }}
+          COVERAGE: ${{ needs.coverage.result }}
+        run: |
+          for r in "$LINT" "$TEST" "$COVERAGE"; do
+            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
+              echo "Job failed with result: $r"
+              exit 1
+            fi
+          done
