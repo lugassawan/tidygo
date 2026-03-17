@@ -16,4 +16,5 @@ coverage:
 	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
 
 init:
+	mise trust
 	git config core.hooksPath .githooks
