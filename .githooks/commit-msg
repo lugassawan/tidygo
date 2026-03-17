@@ -8,7 +8,7 @@ if echo "$msg" | grep -qE '^Merge '; then
     exit 0
 fi
 
-if ! echo "$msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert): .+$'; then
+if ! echo "$msg" | grep -qE '^(feat|fix|refactor|test|ci|chore|docs): .+$'; then
     echo "ERROR: Commit message must follow Conventional Commits format."
     echo "  e.g. feat: add login page"
     echo "  e.g. fix: resolve token expiry bug"

@@ -19,11 +19,11 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           # Keep in sync with .githooks/commit-msg
-          PATTERN='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert): .+$'
+          PATTERN='^(feat|fix|refactor|test|ci|chore|docs): .+$'
           if ! printf '%s' "$PR_TITLE" | grep -qE "$PATTERN"; then
             echo "::error::PR title must match format: type: description (e.g. feat: add new feature)"
             echo ""
-            echo "Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+            echo "Allowed types: feat, fix, refactor, test, ci, chore, docs"
             exit 1
           fi
 
