@@ -6,6 +6,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/lugassawan/tidygo.svg)](https://pkg.go.dev/github.com/lugassawan/tidygo)
 [![Go Report Card](https://goreportcard.com/badge/github.com/lugassawan/tidygo)](https://goreportcard.com/report/github.com/lugassawan/tidygo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/lugassawan/tidygo)](https://github.com/lugassawan/tidygo/releases)
 
 A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code ordering and structural conventions in Go source files.
 
@@ -31,7 +32,7 @@ Create `.custom-gcl.yml`:
 version: v2.10.1
 plugins:
   - module: 'github.com/lugassawan/tidygo'
-    version: v1.0.0
+    version: v0.0.1
 ```
 
 Configure `.golangci.yml`:
