@@ -39,6 +39,14 @@ linters-settings:
     line-length: 120
   dupl:
     threshold: 150
+  revive:
+    rules:
+      - name: unused-parameter
+        disabled: true
+      - name: exported
+        disabled: true
+      - name: package-comments
+        disabled: true
 
 exclusions:
   presets:
@@ -50,15 +58,6 @@ exclusions:
         - gosec
         - goconst
         - gocognit
-    - linters:
-        - revive
-      text: "unused-parameter"
-    - linters:
-        - revive
-      text: "exported"
-    - linters:
-        - revive
-      text: "package-comments"
 
 formatters:
   enable:
