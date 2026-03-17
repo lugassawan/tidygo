@@ -17,7 +17,8 @@ jobs:
       - name: Run golangci-lint
         run: |
           if find . -name '*.go' -not -path './vendor/*' | grep -q .; then
-            golangci-lint run ./...
+            golangci-lint custom
+            ./custom-gcl run ./...
           else
             echo "No Go files found — skipping lint"
           fi

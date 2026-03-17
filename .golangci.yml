@@ -3,6 +3,7 @@ version: "2"
 linters:
   default: standard
   enable:
+    - tidygo
     - copyloopvar
     - dupl
     - dupword
@@ -32,6 +33,9 @@ linters:
     - wastedassign
     - whitespace
   settings:
+    custom:
+      tidygo:
+        type: "module"
     gocognit:
       min-complexity: 15
     lll:

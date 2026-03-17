@@ -25,11 +25,13 @@ if [[ -n "$STAGED_GO_FILES" ]]; then
   echo "$STAGED_GO_FILES" | xargs git add
 fi
 
-# Run golangci-lint (skip if no Go files exist yet)
+# Run golangci-lint with custom binary (dogfooding tidygo plugin)
 GO_FILES=$(find . -name '*.go' -not -path './vendor/*' 2>/dev/null)
 if [[ -n "$GO_FILES" ]]; then
+  echo "Building custom golangci-lint..."
+  golangci-lint custom
   echo "Running golangci-lint..."
-  golangci-lint run ./...
+  ./custom-gcl run ./...
 fi
 
 echo "Pre-commit checks passed."

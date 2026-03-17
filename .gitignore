@@ -7,6 +7,9 @@
 ehthumbs.db
 Thumbs.db
 
+# Custom golangci-lint binary (built by `golangci-lint custom`)
+custom-gcl
+
 # Go binaries and build output
 *.exe
 *.exe~

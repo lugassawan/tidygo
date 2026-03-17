@@ -1,7 +1,10 @@
-.PHONY: test lint fmt coverage init
+.PHONY: test lint fmt coverage init build
 
-lint:
-	golangci-lint run ./...
+build:
+	golangci-lint custom
+
+lint: build
+	./custom-gcl run ./...
 
 fmt:
 	gofmt -w .
@@ -16,4 +19,5 @@ coverage:
 	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
 
 init:
+	mise trust
 	git config core.hooksPath .githooks
