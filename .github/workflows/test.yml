@@ -9,6 +9,8 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'Makefile'
+      - '.custom-gcl.yml'
+      - '.golangci.yml'
   pull_request:
     branches:
       - main
@@ -17,6 +19,8 @@ on:
       - 'go.mod'
       - 'go.sum'
       - 'Makefile'
+      - '.custom-gcl.yml'
+      - '.golangci.yml'
 
 jobs:
   lint:
