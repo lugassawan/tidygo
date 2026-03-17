@@ -16,20 +16,13 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 
 Requirements: Go 1.26+, golangci-lint v2.
 
-Add to your `go.mod`:
+Create `.custom-gcl.yml`:
 
-```sh
-go get github.com/lugassawan/tidygo
-```
-
-Import in a blank import file (e.g. `tools/lint.go`):
-
-```go
-//go:build lint
-
-package tools
-
-import _ "github.com/lugassawan/tidygo"
+```yaml
+version: v2.10.1
+plugins:
+  - module: 'github.com/lugassawan/tidygo'
+    version: v1.0.0
 ```
 
 Configure `.golangci.yml`:
@@ -37,18 +30,20 @@ Configure `.golangci.yml`:
 ```yaml
 version: "2"
 
-plugins:
-  module:
-    tidygo:
-      path: github.com/lugassawan/tidygo
-
 linters:
   enable:
-    - funcname
-    - maxparams
-    - nolateconst
-    - nolateexport
-    - nolocalstruct
+    - tidygo
+  settings:
+    custom:
+      tidygo:
+        type: "module"
+```
+
+Build and run:
+
+```sh
+golangci-lint custom
+./custom-gcl run ./...
 ```
 
 ## Development
@@ -59,13 +54,14 @@ Prerequisites: [mise](https://mise.jdx.dev/)
 mise install && mise trust && make init
 ```
 
-| Target     | Description                                    |
-|------------|------------------------------------------------|
-| `lint`     | Run golangci-lint on all packages              |
-| `fmt`      | Format all Go files with gofmt and golines     |
-| `test`     | Run all tests                                  |
-| `coverage` | Generate HTML coverage report                  |
-| `init`     | Configure git hooks and trust mise config      |
+| Target     | Description                                       |
+|------------|---------------------------------------------------|
+| `build`    | Build custom golangci-lint with tidygo plugin     |
+| `lint`     | Build and run golangci-lint (dogfooding)          |
+| `fmt`      | Format all Go files with gofmt and golines        |
+| `test`     | Run all tests                                     |
+| `coverage` | Generate HTML coverage report                     |
+| `init`     | Configure git hooks and trust mise config         |
 
 ## License
 

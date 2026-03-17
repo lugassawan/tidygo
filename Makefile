@@ -1,7 +1,10 @@
-.PHONY: test lint fmt coverage init
+.PHONY: test lint fmt coverage init build
 
-lint:
-	golangci-lint run ./...
+build:
+	golangci-lint custom
+
+lint: build
+	./custom-gcl run ./...
 
 fmt:
 	gofmt -w .
