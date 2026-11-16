@@ -64,3 +64,11 @@ type Names []string
 func (n Names) helper() {} // OK
 
 func (n Names) Len() int { return len(n) } // want `exported method Names.Len should appear before unexported methods of Names`
+
+// Unnamed receivers resolve to the same base type.
+
+type Un struct{}
+
+func (Un) helper() {} // OK
+
+func (Un) Pub() {} // want `exported method Un.Pub should appear before unexported methods of Un`

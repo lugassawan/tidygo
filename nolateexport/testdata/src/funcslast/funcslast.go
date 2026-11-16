@@ -2,6 +2,10 @@ package funcslast
 
 type Runner struct{}
 
+func init() {} // OK - init is exempt
+
+func (r *Runner) Start() {} // OK - precedes every unexported standalone function
+
 func stableGitEnv() []string { return nil } // OK
 
 func (r *Runner) Run() {} // want `exported method Runner.Run should appear before unexported standalone functions`
