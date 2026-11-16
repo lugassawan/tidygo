@@ -36,6 +36,9 @@ linters:
     custom:
       tidygo:
         type: "module"
+        settings:
+          nolateexport:
+            unexported-funcs-last: true
     gocognit:
       min-complexity: 15
     lll:
