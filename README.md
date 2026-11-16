@@ -29,7 +29,7 @@ Requirements: Go 1.26+, golangci-lint v2.
 Create `.custom-gcl.yml`:
 
 ```yaml
-version: v2.10.1
+version: v2.15.0
 plugins:
   - module: 'github.com/lugassawan/tidygo'
     version: v0.0.1
