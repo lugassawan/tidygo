@@ -86,12 +86,13 @@ Method ordering applies per receiver type, even when the type lives in another f
 ```go
 // a.go
 type T struct{}
+type U struct{}
 
 // b.go
 func (t T) helper() {}
 func (t T) Shown() {}  // error: exported method T.Shown should appear before unexported methods of T
 
-func (u U) Other() {}  // OK — U has no unexported method before it
+func (u U) Other() {}  // OK — no unexported method of U precedes it, even though T has one
 ```
 
 When the receiver type is declared in the same file, `funcorder` reports similar problems. The two linters overlap in that case; nolateexport additionally covers types declared elsewhere.

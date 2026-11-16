@@ -82,6 +82,9 @@ func (s *fileState) checkMethod(pass *analysis.Pass, cfg Config, fn *ast.FuncDec
 		return
 	}
 	typ := recvTypeName(fn.Recv.List[0].Type)
+	if typ == "" {
+		return // unresolvable receiver: skip rather than conflate unrelated types under one key
+	}
 	name := fn.Name.Name
 	if !ast.IsExported(name) {
 		s.seenUnexportedMethod[typ] = true
