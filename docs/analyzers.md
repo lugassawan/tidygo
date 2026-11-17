@@ -66,7 +66,7 @@ func foo() {}
 Enforces export-first ordering within a file:
 
 - **Standalone functions:** an exported function must not appear after an unexported standalone function. `init()` is exempt.
-- **Methods:** an exported method must not appear after an unexported method of the *same receiver type*. Each receiver type is tracked independently (pointer and generic receivers count as the base type), so a layout of "type A's methods, then type B's methods" is fine. It does not matter which file declares the type.
+- **Methods:** an exported method must not appear after an unexported method of the *same receiver type*. Each receiver type is tracked independently (pointer and generic receivers count as the base type), so a layout of "type A's methods, then type B's methods" is fine. It does not matter which file declares the type. Receivers are keyed by the type name as written, so methods declared through a type alias (`type A = T`) are tracked separately from methods declared on `T`; mixed ordering across the two is not reported.
 
 ```go
 // Bad
@@ -103,7 +103,7 @@ When the receiver type is declared in the same file, `funcorder` reports similar
 |---|---|---|
 | `unexported-funcs-last` | `false` | Also require exported methods to appear before unexported *standalone* functions. |
 
-Off by default, so teams that keep helpers next to their callers are unaffected. With it enabled:
+Off by default, so teams that keep unexported standalone helpers next to their callers are unaffected by this option. (The per-type method rule above is always on and still applies to unexported helper *methods*.) With it enabled:
 
 ```go
 // Bad

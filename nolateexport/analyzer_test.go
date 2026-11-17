@@ -21,6 +21,7 @@ func TestNew(t *testing.T) {
 	}{
 		{name: "per-type method ordering", cfg: nolateexport.Config{}, pkg: "example"},
 		{name: "type declared in another file", cfg: nolateexport.Config{}, pkg: "splitfile"},
+		{name: "alias receivers keyed as written", cfg: nolateexport.Config{}, pkg: "aliasrecv"},
 		{
 			name: "per-file state does not leak, option on",
 			cfg:  nolateexport.Config{UnexportedFuncsLast: true},
