@@ -19,7 +19,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `funcname` | Forbids underscores in function and method names |
 | `maxparams` | Forbids functions with more than 7 parameters |
 | `nolateconst` | Forbids `const`/`var` declarations after function declarations |
-| `nolateexport` | Forbids exported functions after unexported functions |
+| `nolateexport` | Forbids exported functions after unexported functions, and exported methods after unexported methods of the same type |
 | `nolocalstruct` | Forbids named struct type declarations inside function bodies |
 
 ## Installation
@@ -29,7 +29,7 @@ Requirements: Go 1.26+, golangci-lint v2.
 Create `.custom-gcl.yml`:
 
 ```yaml
-version: v2.10.1
+version: v2.15.0
 plugins:
   - module: 'github.com/lugassawan/tidygo'
     version: v0.0.1
@@ -47,6 +47,10 @@ linters:
     custom:
       tidygo:
         type: "module"
+        # Optional: also require exported methods before unexported standalone functions.
+        settings:
+          nolateexport:
+            unexported-funcs-last: true
 ```
 
 Build and run:

@@ -16,22 +16,46 @@ func init() {
 	register.Plugin("tidygo", newPlugin)
 }
 
-func newPlugin(_ any) (register.LinterPlugin, error) {
-	return &plugin{}, nil
+// settings mirrors the golangci-lint `linters.settings.custom.tidygo.settings` block.
+// Unknown keys are rejected by register.DecodeSettings, so typos fail loudly.
+type settings struct {
+	NoLateExport noLateExportSettings `json:"nolateexport"`
 }
 
-type plugin struct{}
+type noLateExportSettings struct {
+	UnexportedFuncsLast bool `json:"unexported-funcs-last"`
+}
+
+type plugin struct {
+	nolateexport *analysis.Analyzer
+}
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return []*analysis.Analyzer{
 		funcname.Analyzer,
 		maxparams.Analyzer,
 		nolateconst.Analyzer,
-		nolateexport.Analyzer,
+		p.nolateexport,
 		nolocalstruct.Analyzer,
 	}, nil
 }
 
 func (p *plugin) GetLoadMode() string {
 	return register.LoadModeSyntax
+}
+
+func newPlugin(conf any) (register.LinterPlugin, error) {
+	cfg, err := decodeConfig(conf)
+	if err != nil {
+		return nil, err
+	}
+	return &plugin{nolateexport: nolateexport.New(cfg)}, nil
+}
+
+func decodeConfig(conf any) (nolateexport.Config, error) {
+	s, err := register.DecodeSettings[settings](conf)
+	if err != nil {
+		return nolateexport.Config{}, err
+	}
+	return nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast}, nil
 }
