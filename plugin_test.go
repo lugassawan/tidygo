@@ -27,6 +27,9 @@ const (
 	misspelledMaxKey = "maximum"
 	noAnonNestedKey  = "noanonnested"
 	noLocalStructKey = "nolocalstruct"
+
+	methodColocationKey = "methodcolocation"
+	allowFileSuffixKey  = "allow-file-suffix"
 )
 
 func TestDecodeConfig(t *testing.T) {
@@ -178,12 +181,17 @@ func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
 		registered[a.Name] = true
 	}
 	for _, name := range []string{
+		"atomiccreate",
+		"busywait",
 		"confusingop",
 		"constcond",
+		"deferredcancel",
 		"emptycomment",
 		"emptyfunc",
 		"ifinitonly",
+		"methodcolocation",
 		"nonestedswitch",
+		"txrollback",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if !registered[name] {
@@ -404,6 +412,45 @@ func TestNewPluginWiresFuncNameConfigIntoAnalyzer(t *testing.T) {
 		t.Fatalf("resolving testdata: %v", err)
 	}
 	analysistest.Run(t, testdata, got, "includevars")
+}
+
+func TestDecodeConfigMethodColocation(t *testing.T) {
+	t.Run("allow-file-suffix defaults to off", func(t *testing.T) {
+		got, err := decodeConfig(nil)
+		if err != nil {
+			t.Fatalf("decodeConfig(nil) error = %v", err)
+		}
+		if got.methodcolocation.AllowFileSuffix {
+			t.Errorf("decodeConfig(nil) = %+v, want AllowFileSuffix=false", got.methodcolocation)
+		}
+	})
+
+	t.Run("allow-file-suffix turns the option on", func(t *testing.T) {
+		conf := map[string]any{methodColocationKey: map[string]any{allowFileSuffixKey: true}}
+		got, err := decodeConfig(conf)
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		if !got.methodcolocation.AllowFileSuffix {
+			t.Errorf("decodeConfig() = %+v, want AllowFileSuffix=true", got.methodcolocation)
+		}
+	})
+
+	t.Run("unknown methodcolocation key is rejected", func(t *testing.T) {
+		conf := map[string]any{methodColocationKey: map[string]any{"allow-file-suffixes": true}}
+		requireUnknownKey(t, conf, "allow-file-suffixes")
+	})
+}
+
+func TestNewPluginWiresMethodColocationConfigIntoAnalyzer(t *testing.T) {
+	conf := map[string]any{methodColocationKey: map[string]any{allowFileSuffixKey: true}}
+	got := buildNamed(t, conf, methodColocationKey)
+	// The suffix package only passes if allow-file-suffix reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(methodColocationKey, "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "suffix")
 }
 
 // buildNamed builds the plugin from conf and returns the analyzer called name.

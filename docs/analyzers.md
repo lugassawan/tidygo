@@ -1,5 +1,64 @@
 # Analyzer Details
 
+## atomiccreate
+
+Reports a file created after an existence check on the same path. `os.Stat` followed by `os.IsNotExist` and then `os.Create` is a check-then-act race: another process can create the file between the two calls, and `os.Create` (and `os.WriteFile`) truncates whatever is there. `os.OpenFile` with `O_CREATE|O_EXCL` does the check and the create in one atomic step.
+
+The analyzer needs type information. It matches an `os.Stat` or `os.Lstat` call whose error is tested in an `if` condition by `os.IsNotExist(err)` or `errors.Is(err, fs.ErrNotExist)` / `errors.Is(err, os.ErrNotExist)`, in either the init form (`if _, err := os.Stat(p); os.IsNotExist(err) {`) or as a separate statement before the `if`. Inside that `if` body (not the `else`), it reports `os.Create(p)`, `os.WriteFile(p, ...)` and `os.OpenFile(p, flag, ...)` on the same path, where `flag` is a constant with `O_CREATE` set and `O_EXCL` unset.
+
+```go
+// Bad
+if _, err := os.Stat(path); os.IsNotExist(err) {
+	f, err := os.Create(path) // racy
+	...
+}
+
+// Good
+f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+if errors.Is(err, fs.ErrExist) {
+	// someone else got there first
+}
+```
+
+"Same path" means the same variable that is not reassigned between the stat and the create, or equal constant values.
+
+### Known limitations
+
+- A non-constant `os.OpenFile` flag is skipped, because the analyzer cannot tell whether `O_EXCL` is set.
+- Negated checks (`!os.IsNotExist(err)`) and creates in an `else` branch are not reported.
+- Helpers are not followed: a stat in one function and the create in another, or a path built twice (`filepath.Join(dir, name)` in both calls), is not matched.
+- Creates inside a nested function literal are not attributed to the enclosing check.
+
+## busywait
+
+Forbids a `for` loop that spins on a plain variable: the body is empty, or is only `time.Sleep(...)` or `runtime.Gosched()`. Reading a variable that another goroutine writes, without synchronisation, is a data race, and the loop burns CPU (or polls on a timer) while it waits. Use a channel, `sync.Cond`, `sync.WaitGroup` or `context` instead.
+
+The analyzer needs type information to recognise `time.Sleep` and `runtime.Gosched`. The loop must have a condition and no init or post statement. The condition must be built only from identifiers, selectors, parentheses, `!`, comparisons, `&&`/`||` and constants. Any call, channel receive or index expression in the condition makes the loop exempt, which keeps polling idioms such as `atomic.Load*`, `ctx.Err()`, `time.Now().Before(d)` and `len(q)` out of scope. A bare `for {}` has no condition and is covered by staticcheck SA5002.
+
+```go
+// Bad
+for !done {
+}
+for !s.ready {
+	time.Sleep(10 * time.Millisecond)
+}
+for flag == false {
+	runtime.Gosched()
+}
+
+// Good
+<-doneCh
+for atomic.LoadInt32(&state) == 0 { // an explicit atomic poll is not reported
+	time.Sleep(time.Millisecond)
+}
+for i := 0; i < n; i++ { // has init and post
+}
+```
+
+### Known limitations
+
+A loop that does any other work in its body is never reported, even if it also spins on a plain variable. An atomic poll is not reported either, though a channel is usually still the better design.
+
 ## confusingop
 
 Reports an assignment where `=` is written directly against a unary `+`, `-`, `!` or `^`. Go parses `x =+ 1` as `x = +1`, so the program compiles and silently assigns instead of adding. The diagnostic is raised only when there is a space before `=` and nothing between `=` and the operator; `x = +1`, an operator on the next line, and consistently compact code such as `x=-1` are accepted as deliberate. Only the first right-hand value is checked, so `a, b =-1, 2` is reported too. The operator may also start a larger expression: `total =+ price * qty` is reported because `+price` is its leftmost operand.
@@ -46,6 +105,30 @@ for { run() }
 ### Known limitations
 
 The plugin runs in syntax-only mode, so the check matches the identifier name only. A local variable that shadows `true` or `false` is still reported; enable the `predeclared` linter to catch such shadowing. Expressions that merely evaluate to a constant (`!true`, `true && x`, a named constant) are not detected.
+
+## deferredcancel
+
+Requires the cancel function returned by `context.WithCancel`, `WithTimeout`, `WithDeadline` (and the `...Cause` variants) to be deferred on the very next statement. Deferring it straight away guarantees the context's resources are released on every return path, including panics and early returns added later.
+
+The analyzer needs type information, so aliased imports and shadowed names are handled. It accepts `defer cancel()`, `defer cancel(err)` for the `Cause` variants, and `defer func() { cancel() }()` whose body is that single call.
+
+```go
+// Bad
+ctx, cancel := context.WithTimeout(parent, time.Second)
+result, err := fetch(ctx)
+defer cancel() // not the next statement
+
+// Good
+ctx, cancel := context.WithTimeout(parent, time.Second)
+defer cancel()
+result, err := fetch(ctx)
+```
+
+A cancel func that escapes the function is skipped, because ownership has moved: when it is returned, passed as an argument, stored in a field or composite literal, assigned to another variable, or captured by a `go` statement. A blank `_` cancel is left to `go vet`'s `lostcancel`.
+
+### Difference from `lostcancel`
+
+`lostcancel` reports a cancel function that is not *called on some path*. `deferredcancel` is stricter about style: it wants the `defer` immediately after creation, so a manual `cancel()` at the end of the function is reported here even though `lostcancel` accepts it on straight-line code.
 
 ## emptycomment
 
@@ -350,6 +433,44 @@ type ProcessOpts struct {
 func process(opts ProcessOpts) {}
 ```
 
+## methodcolocation
+
+Requires a method to be declared in the same file as its receiver type, so that reading `user.go` shows the type and everything it can do. The check runs per package and reports the method name, pointing at the file that declares the type.
+
+The following are exempt:
+
+- methods in `_test.go` files;
+- generated files, on either the method or the type side;
+- files with a `//go:build` constraint, and files with a `_<GOOS>`, `_<GOARCH>` or `_<GOOS>_<GOARCH>` name suffix (`user_linux.go`), because platform-specific methods have to live in their own files;
+- receiver types that are not declared in the package.
+
+```go
+// user.go
+type User struct{ ID int }
+
+// helpers.go
+func (u User) Name() string { return "" } // reported: should be in user.go
+```
+
+### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `allow-file-suffix` | `false` | Allow a method in `<stem>_*.go` when the type is declared in `<stem>.go` (`user.go` with `user_sql.go`, `user_json.go`). Only that exact `<stem>_` prefix qualifies. |
+
+```yaml
+linters:
+  settings:
+    custom:
+      tidygo:
+        type: "module"
+        settings:
+          methodcolocation:
+            allow-file-suffix: true
+```
+
+Unknown keys are rejected, so a typo in the option name fails loudly instead of being silently ignored.
+
 ## noanonnested
 
 Reports anonymous struct types nested too deeply inside other anonymous structs. Deeply nested anonymous structs are hard to read, impossible to reuse and awkward to construct; extract a named type instead. Unlike `revive`'s `nested-structs`, this also covers `var` declarations, function parameters and results, and nesting through pointers, slices, maps and channels.
@@ -580,3 +701,34 @@ The nearest enclosing switch-like statement in the same function decides:
 - Sibling switches, one after the other, are fine. Three switches nested in a row produce two reports, one for each inner switch.
 
 This analyzer has no options.
+
+## txrollback
+
+Requires a `*sql.Tx` to have a `defer tx.Rollback()` in the function that begins it. A transaction that returns early without committing or rolling back keeps its connection and any locks until the pool times out. `Rollback` after a successful `Commit` is a harmless no-op that returns `sql.ErrTxDone`, so deferring it right after `Begin` is always safe.
+
+The analyzer needs type information. It tracks any assignment or `var` whose left-hand variable is a `*database/sql.Tx` and whose right-hand side is a call, which covers `DB.Begin`, `DB.BeginTx`, `Conn.BeginTx` and your own wrappers. The deferral may be anywhere in the same function, either `defer tx.Rollback()` or a deferred function literal that calls `tx.Rollback()` (including `_ = tx.Rollback()` or inside an `if`). A manual `tx.Rollback()` in an error branch does not count, because it misses the other return paths and panics.
+
+```go
+// Bad
+tx, err := db.BeginTx(ctx, nil)
+if err != nil {
+	return err
+}
+if _, err := tx.ExecContext(ctx, q); err != nil {
+	return err // leaks the transaction
+}
+return tx.Commit()
+
+// Good
+tx, err := db.BeginTx(ctx, nil)
+if err != nil {
+	return err
+}
+defer tx.Rollback()
+```
+
+A transaction that escapes the function is skipped, because the caller owns it: when it is returned, passed as an argument (including `defer cleanup(tx)`), stored in a field or composite literal, assigned to another variable, or used in a `go` statement.
+
+### Known limitations
+
+Only `*database/sql.Tx` is tracked; other transaction types (`pgx.Tx`, `sqlx.Tx`) are not. The check does not prove a `Rollback` runs on *every* path, only that one is deferred in the function.
