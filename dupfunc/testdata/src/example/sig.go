@@ -241,3 +241,31 @@ func (u user) Upper() string { // want `function user\.Upper has the same body a
 	sink(s)
 	return s
 }
+
+// Reported: methods of different generic types match when the signature does not
+// mention the receiver's type parameters, as with box.count and left.count in f.go.
+func (s *stack[T]) reset(n int) {
+	s.v = s.v[:n]
+	sink(n, "reset")
+	sink(s)
+}
+
+func (s *queue[K, V]) reset(n int) { // want `queue\.reset .* as stack\.reset \(sig\.go:247\)`
+	s.v = s.v[:n]
+	sink(n, "reset")
+	sink(s)
+}
+
+// Not reported: a method named _ is not in the method set, so the signature of one on a
+// generic type cannot be canonicalised and the pair is left alone (a missed report).
+func (s *stack[T]) _(x T) {
+	sink(x, "blank method")
+	sink(s)
+	sink(s.v)
+}
+
+func (s *stack[E]) _(x E) {
+	sink(x, "blank method")
+	sink(s)
+	sink(s.v)
+}

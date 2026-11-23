@@ -164,7 +164,7 @@ Reports a function or method whose body and signature are identical to those of 
 
 Bodies are compared structurally. Positions, comments and layout are ignored, but identifier names, literals and operators must match exactly. A renamed local variable, a different constant or a different operator makes two bodies different.
 
-Signatures must match too, so two functions with the same body but different parameter or result types are left alone: they cannot be merged without generics. Types are compared as the type checker resolves them, so `byte` matches `uint8`, an alias matches its target, and generic functions match up to the names of their type parameters. Receivers and parameter names are not compared, so two methods on different types with the same signature are still reported, since embedding or a shared helper can often merge them. The exception is methods of different generic types: each type has its own type parameters, so their signatures never match and they are not reported.
+Signatures must match too, so two functions with the same body but different parameter or result types are left alone: they cannot be merged without generics. Types are compared as the type checker resolves them, so `byte` matches `uint8`, an alias matches its target, and generic functions match up to the names of their type parameters. Receivers and parameter names are not compared, so two methods on different types with the same signature are still reported, since embedding or a shared helper can often merge them. Methods of different generic types are reported only when their signatures do not mention the receiver's type parameters: `(*stack[T]).push(x T)` and `(*queue[K, V]).push(x K)` use unrelated type parameters and are left alone, while two `reset(n int)` methods are reported.
 
 ```go
 // Bad
@@ -219,7 +219,7 @@ Methods are named with their receiver type, for example `function right.count ha
 
 `_test.go` files and generated files (those with a `// Code generated ... DO NOT EDIT.` header) are skipped entirely, since table-test scaffolding repeats on purpose. Function literals are never compared, and neither are `init` functions: a package may declare several, and one cannot call another to share a body. Duplicates are only found within one package, and only whole bodies are compared, not repeated fragments inside different functions; the `dupl` linter covers larger token-level clones.
 
-Receiver types are not compared, so methods on different types that share a body and signature are reported even when merging them would take a refactor. Raising `min-statements` reduces such noise, and `//nolint:tidygo` on the later function silences a deliberate copy.
+Receiver types are not compared, so methods on different types that share a body and signature are reported even when merging them would take a refactor. A method named `_` on a generic type is never matched, since the type checker does not list it among the type's methods. Raising `min-statements` reduces such noise, and `//nolint:tidygo` on the later function silences a deliberate copy.
 
 ### Options
 
