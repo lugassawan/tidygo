@@ -107,9 +107,11 @@ Prerequisites: [mise](https://mise.jdx.dev/)
 make init
 ```
 
+If you use [rimba](https://github.com/lugassawan/rimba) worktrees, `.rimba/settings.toml` runs `make init` automatically on `rimba add`. rimba skips committed `post_create` commands until you approve them, so run `rimba trust` once per clone, and again whenever the `post_create` commands change.
+
 | Target     | Description                                       |
 |------------|---------------------------------------------------|
-| `init`     | Install tools, trust mise config, set up git hooks|
+| `init`     | Trust mise config, install tools, set up git hooks|
 | `build`    | Build custom golangci-lint with tidygo plugin     |
 | `lint`     | Build and run golangci-lint (dogfooding)          |
 | `fmt`      | Format all Go files with gofmt and golines        |
