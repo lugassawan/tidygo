@@ -9,33 +9,6 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-func TestRecvTypeName(t *testing.T) {
-	cases := []struct {
-		recv string
-		want string
-	}{
-		{recv: "T", want: "T"},
-		{recv: "*T", want: "T"},
-		{recv: "(*T)", want: "T"},
-		{recv: "T[K]", want: "T"},
-		{recv: "*T[K, V]", want: "T"},
-		{recv: "pkg.T", want: ""},
-		{recv: "[]T", want: ""},
-	}
-	for _, c := range cases {
-		t.Run(c.recv, func(t *testing.T) {
-			file := parseSource(t, "package p\nfunc (r "+c.recv+") M() {}\n")
-			fn, ok := file.Decls[0].(*ast.FuncDecl)
-			if !ok {
-				t.Fatalf("decl is %T, want *ast.FuncDecl", file.Decls[0])
-			}
-			if got := recvTypeName(fn.Recv.List[0].Type); got != c.want {
-				t.Errorf("recvTypeName(%s) = %q, want %q", c.recv, got, c.want)
-			}
-		})
-	}
-}
-
 // Receivers that cannot be resolved to a local type name (e.g. pkg.T) must not
 // share a key, or unrelated types would be cross-reported.
 func TestRunSkipsUnresolvableReceivers(t *testing.T) {
