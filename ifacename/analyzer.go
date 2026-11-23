@@ -4,7 +4,7 @@
 // Only interfaces declared in the linted packages whose body is exactly one
 // exported method are checked; embedded interfaces, type-set elements and
 // unexported (sealed or marker) methods are skipped. Config.AllowedNames exempts
-// names that cannot be derived mechanically. See docs/analyzers.md for the
+// names that cannot be derived mechanically. See docs/analyzers/ifacename.md for the
 // accepted spellings.
 package ifacename
 

@@ -2,7 +2,7 @@
 // an os.Stat not-exist check, os.Create can clobber a file a concurrent writer
 // made in between. The atomic form is os.OpenFile with O_CREATE|O_EXCL.
 //
-// See docs/analyzers.md for what is matched and where the check stops.
+// See docs/analyzers/atomiccreate.md for what is matched and where the check stops.
 package atomiccreate
 
 import (

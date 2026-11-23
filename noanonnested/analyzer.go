@@ -1,6 +1,6 @@
 // Package noanonnested defines an analyzer that reports anonymous struct types
 // nested too deeply inside other anonymous structs. Config.Max overrides the
-// default limit of DefaultMax. See docs/analyzers.md for how depth is counted.
+// default limit of DefaultMax. See docs/analyzers/noanonnested.md for how depth is counted.
 package noanonnested
 
 import (

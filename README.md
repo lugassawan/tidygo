@@ -14,35 +14,37 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 
 ## Analyzers
 
+Each name links to the analyzer's page, grouped in the [index](docs/analyzers/README.md).
+
 | Analyzer | Description |
 |---|---|
-| `aeadcipher` | Reports unauthenticated cipher modes for encryption (`cipher.NewCBCEncrypter`, `cipher.NewCTR`); use an AEAD such as GCM |
-| `atomiccreate` | Reports `os.Create`, `os.WriteFile` and non-exclusive `os.OpenFile` calls guarded by an `os.Stat` not-exist check (use `O_CREATE\|O_EXCL`) |
-| `busywait` | Forbids empty or sleep-only `for` loops that spin on a plain variable |
-| `confusingop` | Reports `=+`, `=-`, `=!` and `=^` assignments that look like typos for `+=`, `-=`, `!=` and `^=` |
-| `constcond` | Forbids `if` and `for` statements whose condition is the literal `true` or `false` |
-| `deferredcancel` | Requires the cancel func from `context.WithCancel`/`WithTimeout`/`WithDeadline` to be deferred immediately |
-| `dupfunc` | Reports functions with the same body (at least 3 statements) and signature as an earlier function in the same package (configurable) |
-| `elseifelse` | Requires an `if … else if` chain to end in a final `else` (opt-in, off by default) |
-| `emptycomment` | Forbids `/* */` block comments that contain only whitespace and `*` |
-| `emptyfunc` | Requires a comment inside function bodies that contain no statements |
-| `funcname` | Forbids underscores in function and method names (optionally variables, constants, parameters, results and receivers) |
-| `ifacename` | Requires single-method interfaces to be named after their method plus an agent-noun suffix (`Read` → `Reader`) |
-| `ifinitonly` | Forbids `if` init variables used only in the condition |
-| `jwtnone` | Reports use of the JWT `none` algorithm (`SigningMethodNone`, `UnsafeAllowNoneSignatureType`) in golang-jwt (v3, v4, v5), dgrijalva/jwt-go and form3tech-oss/jwt-go |
-| `maxboolops` | Forbids boolean expressions with more than 3 `&&` and `\|\|` operators (configurable) |
-| `maxcaselines` | Forbids `case` clause bodies that span more than 10 lines (configurable) |
-| `maxcases` | Forbids `switch`, type switch and `select` statements with more than 30 case clauses (configurable) |
-| `maxparams` | Forbids functions with more than 7 parameters |
-| `methodcolocation` | Requires a method to be declared in the same file as its receiver type (optionally allowing `<file>_*.go` siblings of the type's file) |
-| `noanonnested` | Forbids more than 1 level of anonymous struct nesting; a named struct type does not count (configurable) |
-| `nolateconst` | Forbids `const`/`var` declarations after function declarations |
-| `nolateexport` | Forbids exported functions after unexported functions, and exported methods after unexported methods of the same type |
-| `nolocalstruct` | Forbids named struct type declarations inside function bodies (optionally interfaces and defined types too) |
-| `nonestedswitch` | Forbids a `switch` or type switch nested inside another `switch` or type switch |
-| `redundantparen` | Forbids unnecessary parentheses around return values, assignment right-hand sides and call arguments |
-| `txrollback` | Requires a `*sql.Tx` to have a `defer tx.Rollback()` in the function that begins it |
-| `weakpwhash` | Reports password hashing (pbkdf2, scrypt, argon2, bcrypt) with a constant salt or a constant cost below a conservative floor |
+| [`aeadcipher`](docs/analyzers/aeadcipher.md) | Reports unauthenticated cipher modes for encryption (CBC, CTR) |
+| [`atomiccreate`](docs/analyzers/atomiccreate.md) | Reports file creation guarded by an `os.Stat` not-exist check instead of `O_CREATE\|O_EXCL` |
+| [`busywait`](docs/analyzers/busywait.md) | Forbids empty or sleep-only `for` loops that spin on a plain variable |
+| [`confusingop`](docs/analyzers/confusingop.md) | Reports `=+`, `=-`, `=!` and `=^` assignments that look like typos |
+| [`constcond`](docs/analyzers/constcond.md) | Forbids `if` and `for` conditions that are the literal `true` or `false` |
+| [`deferredcancel`](docs/analyzers/deferredcancel.md) | Requires the `context` cancel func to be deferred immediately |
+| [`dupfunc`](docs/analyzers/dupfunc.md) | Reports functions with the same body and signature as an earlier one (configurable) |
+| [`elseifelse`](docs/analyzers/elseifelse.md) | Requires an `if … else if` chain to end in a final `else` (opt-in) |
+| [`emptycomment`](docs/analyzers/emptycomment.md) | Forbids `/* */` comments that contain only whitespace and `*` |
+| [`emptyfunc`](docs/analyzers/emptyfunc.md) | Requires a comment inside function bodies with no statements |
+| [`funcname`](docs/analyzers/funcname.md) | Forbids underscores in function and method names (configurable) |
+| [`ifacename`](docs/analyzers/ifacename.md) | Requires single-method interfaces to be named after their method (`Read` → `Reader`) |
+| [`ifinitonly`](docs/analyzers/ifinitonly.md) | Forbids `if` init variables used only in the condition |
+| [`jwtnone`](docs/analyzers/jwtnone.md) | Reports use of the JWT `none` algorithm |
+| [`maxboolops`](docs/analyzers/maxboolops.md) | Forbids boolean expressions with more than 3 `&&` and `\|\|` operators (configurable) |
+| [`maxcaselines`](docs/analyzers/maxcaselines.md) | Forbids `case` bodies longer than 10 lines (configurable) |
+| [`maxcases`](docs/analyzers/maxcases.md) | Forbids switches with more than 30 case clauses (configurable) |
+| [`maxparams`](docs/analyzers/maxparams.md) | Forbids functions with more than 7 parameters |
+| [`methodcolocation`](docs/analyzers/methodcolocation.md) | Requires a method to be declared in the same file as its receiver type (configurable) |
+| [`noanonnested`](docs/analyzers/noanonnested.md) | Forbids more than 1 level of anonymous struct nesting (configurable) |
+| [`nolateconst`](docs/analyzers/nolateconst.md) | Forbids `const`/`var` declarations after function declarations |
+| [`nolateexport`](docs/analyzers/nolateexport.md) | Forbids exported functions and methods after unexported ones (configurable) |
+| [`nolocalstruct`](docs/analyzers/nolocalstruct.md) | Forbids named struct types declared inside function bodies (configurable) |
+| [`nonestedswitch`](docs/analyzers/nonestedswitch.md) | Forbids a `switch` nested inside another `switch` |
+| [`redundantparen`](docs/analyzers/redundantparen.md) | Forbids unnecessary parentheses around return values, assignments and call arguments |
+| [`txrollback`](docs/analyzers/txrollback.md) | Requires a `*sql.Tx` to have a `defer tx.Rollback()` |
+| [`weakpwhash`](docs/analyzers/weakpwhash.md) | Reports password hashing with a constant salt or a too-low constant cost |
 
 ## Installation
 
@@ -73,38 +75,9 @@ linters:
           # Optional: raise the fewest statements a function body needs to be compared (default 3).
           dupfunc:
             min-statements: 5
-          # Optional: turn on the opt-in analyzer that requires a final else in if-else-if chains.
-          elseifelse:
-            enabled: true
-          # Optional: apply the underscore rule to variables, constants, parameters,
-          # results and receivers as well as functions.
-          funcname:
-            include-vars: true
-          # Optional: exempt interface names that cannot be derived from their method.
-          ifacename:
-            allowed-names: [Handler]
-          # Optional: raise the most allowed && and || operators per expression (default 3).
-          maxboolops:
-            max: 4
-          # Optional: raise the longest allowed case body (default 10 lines).
-          maxcaselines:
-            max: 15
-          # Optional: raise the most allowed case clauses per switch (default 30).
-          maxcases:
-            max: 40
-          # Optional: allow methods in <type>_*.go files (user.go → user_sql.go).
-          methodcolocation:
-            allow-file-suffix: true
-          # Optional: raise the deepest allowed nesting of anonymous structs (default 1).
-          noanonnested:
-            max: 2
-          # Optional: also require exported methods before unexported standalone functions.
-          nolateexport:
-            unexported-funcs-last: true
-          # Optional: also forbid local interfaces and defined types, not just structs.
-          nolocalstruct:
-            all-types: true
 ```
+
+Every analyzer's options are on its page. Unknown keys are rejected, so a typo fails loudly.
 
 tidygo loads packages with type information, so golangci-lint skips every tidygo analyzer on a package that does not type-check.
 
