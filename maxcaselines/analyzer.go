@@ -33,7 +33,7 @@ func New(cfg Config) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name:     "maxcaselines",
-		Doc:      "forbids switch and select case clauses whose body spans too many lines",
+		Doc:      "forbids switch, type switch and select case clauses whose body spans too many lines",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, limit)
