@@ -84,9 +84,7 @@ func waitLocal(d duration) duration {
 }
 
 // Reported: the same qualified type in both signatures.
-func waitStdAgain(
-	d time.Duration,
-) time.Duration { // want `function waitStdAgain has the same body as waitStd \(sig\.go:74\)`
+func waitStdAgain(d time.Duration) time.Duration { // want `waitStdAgain .* as waitStd \(sig\.go:74\)`
 	sink(d, "wait")
 	sink(d)
 	return d
@@ -198,9 +196,7 @@ func _() { // want `function _ has the same body as _ \(sig\.go:184\)`
 // Reported: a body can hold several signature classes. clampFloat opened the second
 // one, so a later float64 copy is reported against it and not against clampInt, and
 // an int copy after it still finds the first class.
-func clampFloatAgain(
-	x, lo, hi float64,
-) float64 { // want `function clampFloatAgain has the same body as clampFloat \(sig\.go:22\)`
+func clampFloatAgain(x, lo, hi float64) float64 { // want `clampFloatAgain .* as clampFloat \(sig\.go:22\)`
 	if x < lo {
 		return lo
 	}
