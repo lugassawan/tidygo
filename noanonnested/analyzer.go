@@ -1,12 +1,6 @@
 // Package noanonnested defines an analyzer that reports anonymous struct types
 // nested too deeply inside other anonymous structs. Config.Max overrides the
-// default limit of DefaultMax.
-//
-// A struct that is the right-hand side of a type declaration (named or alias)
-// has depth 0, so `type T struct{ X struct{...} }` has depth 1. Every anonymous
-// struct reached through fields, pointers, slices, arrays, maps and channels adds
-// one level. Only the first struct over the limit in a chain is reported, so a
-// deeply nested type yields one diagnostic pointing at the type to extract.
+// default limit of DefaultMax. See docs/analyzers.md for how depth is counted.
 package noanonnested
 
 import (

@@ -14,6 +14,13 @@ func locals() {
 	// ...unless they alias a struct, which the default rule already reports.
 	type StructAlias = struct{ y int } // want `named struct type "StructAlias" should be declared at package level, not inside a function`
 
+	// Every spec of a grouped declaration is checked on its own.
+	type (
+		GroupedStruct struct{} // want `named struct type "GroupedStruct" should be declared at package level, not inside a function`
+		GroupedInt    int      // want `named type "GroupedInt" should be declared at package level, not inside a function`
+		GroupedAlias  = int
+	)
+
 	_ = func() {
 		type InLiteral int // want `named type "InLiteral" should be declared at package level, not inside a function`
 	}

@@ -85,6 +85,40 @@ func local() {
 	_ = cases
 }
 
+// A named slice, map or pointer of anonymous structs counts the element struct
+// as the first level, unlike a named struct, which counts as depth 0.
+type Rows []struct {
+	Addr struct{ City string } // want `anonymous struct nested 2 levels deep, max is 1; extract a named type`
+}
+
+// A local type declaration stops the walk like a package-level one.
+func localDecl() {
+	type L struct {
+		A struct {
+			B struct{ C int } // want `anonymous struct nested 2 levels deep, max is 1; extract a named type`
+		}
+	}
+	_ = L{}
+}
+
+// A function type starts a new scope, so its parameters do not inherit the outer depth.
+var fv struct {
+	F func(p struct{ A int })
+}
+
+// So does a generic instantiation.
+type Box[T any] struct{}
+
+var inBox struct {
+	F Box[struct{ A int }]
+}
+
+var deepInBox struct {
+	F Box[struct {
+		A struct{ B int } // want `anonymous struct nested 2 levels deep, max is 1; extract a named type`
+	}]
+}
+
 // An interface method signature is a different scope: the walk stops there.
 type Iface interface {
 	Do(p struct{ A int }) struct{ B int }

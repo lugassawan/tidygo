@@ -46,6 +46,31 @@ func locals(ch chan int, m map[string]int, v any) {
 	_ = fn
 }
 
+// A := that redeclares a name checks it again: without type information the
+// analyzer cannot tell a redeclaration from a new variable.
+func redeclared() {
+	a_b, err := 1, 2 // want `variable "a_b"`
+	a_b, ok := 3, 4  // want `variable "a_b"`
+	_, _, _ = a_b, err, ok
+}
+
+func inits() {
+	if if_v := 1; if_v > 0 { // want `variable "if_v"`
+	}
+	switch sw_v := 2; sw_v { // want `variable "sw_v"`
+	}
+	for for_i := 0; for_i < 1; for_i++ { // want `variable "for_i"`
+	}
+}
+
+// Box is a dummy generic type for receiver tests.
+type Box[T any] struct{}
+
+func (re_g Box[T]) M() {} // want `receiver "re_g"`
+
+// Receiver type parameters are type parameters, so they are not checked.
+func (b Box[T_p]) N() {}
+
 // Sites that are deliberately not checked.
 
 type S struct{ field_name int }

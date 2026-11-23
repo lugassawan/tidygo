@@ -30,7 +30,9 @@ Off by default, so existing configurations see no new findings. With it enabled,
 - `range` keys and values declared with `:=`
 - receivers, parameters and named results of functions, methods and function literals
 
-Struct fields, type parameters, and the parameters of interface methods and function *types* are not checked, since they declare no variable. Assignments (`=`) and `range ... = ` clauses only reuse an existing variable, so they are not checked either. Without type information, a `:=` that redeclares an existing variable is checked again, so such a name can be reported twice.
+Struct fields, type parameters, and the parameters of interface methods and function *types* are not checked, since they declare no variable. Assignments (`=`) and `range ... = ` clauses only reuse an existing variable, so they are not checked either. Without type information, a `:=` that redeclares an existing variable is checked again, so such a name can be reported twice, and a `//nolint` on the original declaration does not cover the later `:=`.
+
+The pattern is ASCII-only (`[a-zA-Z0-9]`), as it already is for function names, so a valid Go identifier such as `σ` or `参数` is reported. Leave `include-vars` off if your code uses non-ASCII identifiers.
 
 ```go
 // Bad
@@ -289,7 +291,7 @@ var cfg struct {
 Depth is counted like this:
 
 - A struct that is the right-hand side of a type declaration (named or alias) has depth 0, so `type T struct{ X struct{ ... } }` is depth 1 and allowed.
-- Any other anonymous struct has depth 1, plus one for every anonymous struct that encloses it through fields, pointers (`*`), slices and arrays, maps and channels.
+- Any other anonymous struct has depth 1, plus one for every anonymous struct that encloses it through fields, pointers (`*`), slices and arrays, maps and channels. A named slice of anonymous structs (`type Rows []struct{ A struct{ ... } }`) therefore counts its element struct as the first level, so the inner struct is depth 2 and reported.
 - Anything else ends the walk: function signatures, interface methods, generic instantiations and composite literals each start counting again from 1.
 
 Only the struct at depth `max + 1` is reported. That is the one to extract, and it gives one diagnostic per nesting chain: a struct three levels deep is reported once, at level two.

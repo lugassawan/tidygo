@@ -116,6 +116,8 @@ func (c checker) genDecl(gd *ast.GenDecl) {
 // define checks the left-hand side of a short variable declaration, which also
 // covers type switch bindings and select receive clauses. Plain assignments and
 // range clauses using = only reuse existing variables, so they are skipped.
+// A := that redeclares an existing name is checked again, because telling it
+// apart from a new variable needs type information the syntax-only mode lacks.
 func (c checker) define(tok token.Token, exprs ...ast.Expr) {
 	if tok != token.DEFINE {
 		return

@@ -25,7 +25,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `noanonnested` | Forbids anonymous structs nested more than 1 level deep inside other anonymous structs (configurable) |
 | `nolateconst` | Forbids `const`/`var` declarations after function declarations |
 | `nolateexport` | Forbids exported functions after unexported functions, and exported methods after unexported methods of the same type |
-| `nolocalstruct` | Forbids named struct type declarations inside function bodies (optionally all named types) |
+| `nolocalstruct` | Forbids named struct type declarations inside function bodies (optionally interfaces and defined types too) |
 | `nonestedswitch` | Forbids a `switch` or type switch nested inside another `switch` or type switch |
 
 ## Installation
