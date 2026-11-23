@@ -26,9 +26,11 @@ var Analyzer = &analysis.Analyzer{
 // jwtPackages are the import paths of the JWT libraries that define the none
 // algorithm.
 var jwtPackages = []string{
+	"github.com/golang-jwt/jwt",
 	"github.com/golang-jwt/jwt/v4",
 	"github.com/golang-jwt/jwt/v5",
 	"github.com/dgrijalva/jwt-go",
+	"github.com/form3tech-oss/jwt-go",
 }
 
 // Diagnostics, keyed by the reported identifier.

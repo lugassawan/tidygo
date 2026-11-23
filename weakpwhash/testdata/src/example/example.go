@@ -21,7 +21,7 @@ func stdPBKDF2(pw string, salt []byte, iter int) {
 	_, _ = pbkdf2.Key(h, pw, []byte("salt"), 600000, 32)               // want `pbkdf2.Key uses a constant salt`
 	_, _ = pbkdf2.Key(h, pw, []byte{1, 2, 3}, 600000, 32)              // want `pbkdf2.Key uses a constant salt`
 	_, _ = pbkdf2.Key(h, pw, []byte(fixedSalt), 600000, 32)            // want `pbkdf2.Key uses a constant salt`
-	_, _ = pbkdf2.Key(h, pw, salt, 1000, 32)                           // want `iteration count 1000 is below the min`
+	_, _ = pbkdf2.Key(h, pw, salt, 1000, 32)                           // want `iteration count 1000 is below the floor`
 	_, _ = pbkdf2.Key(h, pw, salt, 99999, 32)                          // want `iteration count 99999 is below`
 	_, _ = pbkdf2.Key(h, pw, nil, 1000, 32)                            // want `constant salt` `count 1000 is`
 	_, _ = pbkdf2.Key(h, pw, salt, 100000, 32)                         // at the floor
@@ -34,14 +34,14 @@ func oldPBKDF2(pw, salt []byte, iter int) {
 
 	_ = oldpbkdf2.Key(pw, nil, 600000, 32, h)         // want `pbkdf2.Key uses a constant salt`
 	_ = oldpbkdf2.Key(pw, []byte("s"), 600000, 32, h) // want `pbkdf2.Key uses a constant salt`
-	_ = oldpbkdf2.Key(pw, salt, 4096, 32, h)          // want `pbkdf2.Key iteration count 4096 is below the minimum`
+	_ = oldpbkdf2.Key(pw, salt, 4096, 32, h)          // want `pbkdf2.Key iteration count 4096 is below the floor`
 	_ = oldpbkdf2.Key(pw, salt, 100000, 32, h)
 	_ = oldpbkdf2.Key(pw, salt, iter, 32, h)
 }
 
 func scryptKey(pw, salt []byte, n int) {
 	_, _ = scrypt.Key(pw, []byte("salt"), 32768, 8, 1, 32) // want `scrypt.Key uses a constant salt`
-	_, _ = scrypt.Key(pw, salt, 16384, 8, 1, 32)           // want `scrypt.Key N 16384 is below the minimum 32768`
+	_, _ = scrypt.Key(pw, salt, 16384, 8, 1, 32)           // want `scrypt.Key N 16384 is below the floor 32768`
 	_, _ = scrypt.Key(pw, salt, 32768, 8, 1, 32)
 	_, _ = scrypt.Key(pw, salt, n, 8, 1, 32)
 }
@@ -49,15 +49,15 @@ func scryptKey(pw, salt []byte, n int) {
 func argon2Keys(pw, salt []byte, mem uint32) {
 	_ = argon2.Key(pw, nil, 1, 65536, 4, 32)           // want `argon2.Key uses a constant salt`
 	_ = argon2.IDKey(pw, []byte("s"), 1, 65536, 4, 32) // want `argon2.IDKey uses a constant salt`
-	_ = argon2.Key(pw, salt, 1, 4096, 4, 32)           // want `memory 4096 KiB is below the minimum 19456 KiB`
+	_ = argon2.Key(pw, salt, 1, 4096, 4, 32)           // want `memory 4096 KiB is below the floor 19456 KiB; stronger`
 	_ = argon2.IDKey(pw, salt, 1, 19455, 4, 32)        // want `argon2.IDKey memory 19455 KiB is below`
 	_ = argon2.IDKey(pw, salt, 1, 19456, 4, 32)
 	_ = argon2.IDKey(pw, salt, 1, mem, 4, 32)
 }
 
 func bcryptCost(pw []byte, cost int) {
-	_, _ = bcrypt.GenerateFromPassword(pw, 4)              // want `GenerateFromPassword cost 4 is below the minimum 10`
-	_, _ = bcrypt.GenerateFromPassword(pw, 9)              // want `GenerateFromPassword cost 9 is below the minimum 10`
+	_, _ = bcrypt.GenerateFromPassword(pw, 4)              // want `GenerateFromPassword cost 4 is below the floor 10`
+	_, _ = bcrypt.GenerateFromPassword(pw, 9)              // want `GenerateFromPassword cost 9 is below the floor 10`
 	_, _ = bcrypt.GenerateFromPassword(pw, 10)             // at the floor
 	_, _ = bcrypt.GenerateFromPassword(pw, bcrypt.MinCost) // want `cost 4 is below`
 	_, _ = bcrypt.GenerateFromPassword(pw, bcrypt.DefaultCost)

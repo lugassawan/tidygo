@@ -1,8 +1,10 @@
 // Package weakpwhash defines an analyzer that reports password-hashing calls
-// with a constant salt or a constant work factor below the current guidance.
+// with a constant salt or a constant work factor below a conservative floor.
 // A constant salt lets one precomputed table attack every password; a low cost
-// makes brute force cheap. Only compile-time constants are judged, so values
-// read from variables or configuration are never reported.
+// makes brute force cheap. The floors are deliberately lenient, so passing them
+// is not a recommendation: stronger settings are advised. Only compile-time
+// constants are judged, so values read from variables or configuration are
+// never reported.
 package weakpwhash
 
 import (
@@ -20,7 +22,7 @@ import (
 // Analyzer reports constant salts and low constant costs in password hashing.
 var Analyzer = &analysis.Analyzer{
 	Name:     "weakpwhash",
-	Doc:      "reports password hashing with a constant salt or a constant cost below the recommended minimum",
+	Doc:      "reports password hashing with a constant salt or a constant cost below a conservative floor",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }
@@ -105,8 +107,8 @@ func checkCall(pass *analysis.Pass, call *ast.CallExpr, r rule) {
 		return
 	}
 	if cost, ok := constInt(pass.TypesInfo, arg); ok && cost >= r.from && cost < r.min {
-		pass.Reportf(arg.Pos(), "%s %s %d%s is below the minimum %d%[4]s",
-			name, r.costName, cost, r.costUnit, r.min)
+		pass.Reportf(arg.Pos(), "%s %s %d%s is below the floor %d%s; stronger settings are recommended (see docs)",
+			name, r.costName, cost, r.costUnit, r.min, r.costUnit)
 	}
 }
 

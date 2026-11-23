@@ -2,6 +2,8 @@ package example
 
 import (
 	legacy "github.com/dgrijalva/jwt-go"
+	fork "github.com/form3tech-oss/jwt-go"
+	jwtv3 "github.com/golang-jwt/jwt"
 	. "github.com/golang-jwt/jwt/v4"
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 )
@@ -16,6 +18,14 @@ func verify() any {
 
 func aliased() legacy.SigningMethod {
 	return legacy.SigningMethodNone // want `jwt.SigningMethodNone produces unsigned tokens`
+}
+
+func unversioned() jwtv3.SigningMethod {
+	return jwtv3.SigningMethodNone // want `jwt.SigningMethodNone produces unsigned tokens`
+}
+
+func forked() fork.SigningMethod {
+	return fork.SigningMethodNone // want `jwt.SigningMethodNone produces unsigned tokens`
 }
 
 func dotImport() SigningMethod {

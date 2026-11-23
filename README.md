@@ -29,7 +29,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `funcname` | Forbids underscores in function and method names (optionally variables, constants, parameters, results and receivers) |
 | `ifacename` | Requires single-method interfaces to be named after their method plus an agent-noun suffix (`Read` → `Reader`) |
 | `ifinitonly` | Forbids `if` init variables used only in the condition |
-| `jwtnone` | Reports use of the JWT `none` algorithm (`SigningMethodNone`, `UnsafeAllowNoneSignatureType`) in golang-jwt and dgrijalva/jwt-go |
+| `jwtnone` | Reports use of the JWT `none` algorithm (`SigningMethodNone`, `UnsafeAllowNoneSignatureType`) in golang-jwt (v3, v4, v5), dgrijalva/jwt-go and form3tech-oss/jwt-go |
 | `maxboolops` | Forbids boolean expressions with more than 3 `&&` and `\|\|` operators (configurable) |
 | `maxcaselines` | Forbids `case` clause bodies that span more than 10 lines (configurable) |
 | `maxcases` | Forbids `switch`, type switch and `select` statements with more than 30 case clauses (configurable) |
