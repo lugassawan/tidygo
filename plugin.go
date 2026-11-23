@@ -7,6 +7,7 @@ import (
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/lugassawan/tidygo/aeadcipher"
 	"github.com/lugassawan/tidygo/atomiccreate"
 	"github.com/lugassawan/tidygo/busywait"
 	"github.com/lugassawan/tidygo/confusingop"
@@ -17,6 +18,7 @@ import (
 	"github.com/lugassawan/tidygo/funcname"
 	"github.com/lugassawan/tidygo/ifacename"
 	"github.com/lugassawan/tidygo/ifinitonly"
+	"github.com/lugassawan/tidygo/jwtnone"
 	"github.com/lugassawan/tidygo/maxcaselines"
 	"github.com/lugassawan/tidygo/maxcases"
 	"github.com/lugassawan/tidygo/maxparams"
@@ -27,6 +29,7 @@ import (
 	"github.com/lugassawan/tidygo/nolocalstruct"
 	"github.com/lugassawan/tidygo/nonestedswitch"
 	"github.com/lugassawan/tidygo/txrollback"
+	"github.com/lugassawan/tidygo/weakpwhash"
 )
 
 func init() {
@@ -97,6 +100,7 @@ type plugin struct {
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return []*analysis.Analyzer{
+		aeadcipher.Analyzer,
 		atomiccreate.Analyzer,
 		busywait.Analyzer,
 		confusingop.Analyzer,
@@ -107,6 +111,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		p.funcname,
 		p.ifacename,
 		ifinitonly.Analyzer,
+		jwtnone.Analyzer,
 		p.maxcaselines,
 		p.maxcases,
 		maxparams.Analyzer,
@@ -117,13 +122,15 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		p.nolocalstruct,
 		nonestedswitch.Analyzer,
 		txrollback.Analyzer,
+		weakpwhash.Analyzer,
 	}, nil
 }
 
-// GetLoadMode asks for type information: deferredcancel, txrollback, busywait and
-// atomiccreate resolve callees through pass.TypesInfo. golangci-lint skips every
-// analyzer on a package that fails to type-check, so the syntax-only analyzers go
-// quiet on non-compiling code too.
+// GetLoadMode asks for type information: deferredcancel, txrollback, busywait,
+// atomiccreate, aeadcipher, jwtnone and weakpwhash resolve callees and
+// identifiers through pass.TypesInfo. golangci-lint skips every analyzer on a
+// package that fails to type-check, so the syntax-only analyzers go quiet on
+// non-compiling code too.
 func (p *plugin) GetLoadMode() string {
 	return register.LoadModeTypesInfo
 }
