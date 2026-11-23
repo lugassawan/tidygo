@@ -63,6 +63,12 @@ type ConstraintAndMethod interface {
 
 type _ interface{ Anything() }
 
+// Sealed and marker interfaces have an unexported sole method and are skipped.
+
+type Node interface{ isNode() }
+
+type Option interface{ apply() }
+
 // Reported.
 
 type FileRead interface{ Read() } // want `single-method interface FileRead should be named after its method Read \(e\.g\. Reader\)`
@@ -77,10 +83,6 @@ type UserGetter interface{ GetUser() } // want `single-method interface UserGett
 type Aliased = interface{ Read() } // want `single-method interface Aliased should be named after its method Read \(e\.g\. Reader\)`
 
 type Box[T any] interface{ Get() T } // want `single-method interface Box should be named after its method Get \(e\.g\. Getter\)`
-
-type Applier interface{ apply() }
-
-type Option interface{ apply() } // want `single-method interface Option should be named after its method apply \(e\.g\. Applier\)`
 
 func localReported() {
 	type badLocal interface{ Flush() } // want `single-method interface badLocal should be named after its method Flush \(e\.g\. flusher\)`

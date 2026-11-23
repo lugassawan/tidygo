@@ -163,3 +163,20 @@ func TestSuggest(t *testing.T) {
 		})
 	}
 }
+
+// TestSuggestionIsAccepted pins that following the diagnostic's hint always yields
+// a name the analyzer accepts, so a user never loops between suggest and the check.
+func TestSuggestionIsAccepted(t *testing.T) {
+	verbs := []string{
+		read, closeM, copyM, stopM, visitM, validateM, "Open", "Create", "Update",
+		"Format", "Commit", "Submit", "Begin", "Control", "Reset", "Audit",
+		"Flush", "Execute", "Handle", "Notify", "Run", "Get",
+	}
+	for _, verb := range verbs {
+		for _, exported := range []bool{true, false} {
+			if got := suggest(verb, exported); !isAcceptedName(verb, got) {
+				t.Errorf("suggest(%q, %v) = %q, which isAcceptedName rejects", verb, exported, got)
+			}
+		}
+	}
+}

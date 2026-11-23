@@ -1,16 +1,11 @@
-// Package ifacename defines an analyzer that enforces Go's naming convention for
-// single-method interfaces: the interface is named after its method plus an
-// agent-noun suffix (Read → Reader, Close → Closer, Validate → Validator).
+// Package ifacename defines an analyzer that requires a single-method interface
+// to be named after its method plus an agent-noun suffix (Read → Reader).
 //
-// Only interfaces whose body is exactly one named method are checked.
-// Embedded interfaces and type-set elements (~int | ~string) cause a skip.
-// The check is purely syntactic, so it only ever inspects interfaces declared
-// in the packages being linted, never ones imported from dependencies.
-//
-// Matching is strict but tolerant of common English spelling variants and of the
-// standard library's "first word + -er + rest" form (ReadFrom → ReaderFrom).
-// Names that cannot be derived mechanically (e.g. Handler for ServeHTTP) can be
-// exempted with Config.AllowedNames.
+// Only interfaces declared in the linted packages whose body is exactly one
+// exported method are checked; embedded interfaces, type-set elements and
+// unexported (sealed or marker) methods are skipped. Config.AllowedNames exempts
+// names that cannot be derived mechanically. See docs/analyzers.md for the
+// accepted spellings.
 package ifacename
 
 import (
@@ -76,8 +71,8 @@ func checkSpec(pass *analysis.Pass, allowed map[string]bool, ts *ast.TypeSpec) {
 		return
 	}
 	method, ok := singleMethod(iface)
-	if !ok {
-		return
+	if !ok || !ast.IsExported(method) {
+		return // unexported sole method: a sealed or marker interface (isNode, apply)
 	}
 	name := ts.Name.Name
 	if allowed[name] || isAcceptedName(method, name) {
