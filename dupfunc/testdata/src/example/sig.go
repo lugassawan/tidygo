@@ -256,8 +256,9 @@ func (s *queue[K, V]) reset(n int) { // want `queue\.reset .* as stack\.reset \(
 	sink(s)
 }
 
-// Not reported: a method named _ is not in the method set, so the signature of one on a
-// generic type cannot be canonicalised and the pair is left alone (a missed report).
+// Not reported: a method named _ is not in the method set, so one on a generic type is
+// not canonicalised and keeps its raw signature. Here x has the receiver's own type
+// parameter in each method, so the two signatures differ (a missed report).
 func (s *stack[T]) _(x T) {
 	sink(x, "blank method")
 	sink(s)
@@ -268,4 +269,12 @@ func (s *stack[E]) _(x E) {
 	sink(x, "blank method")
 	sink(s)
 	sink(s.v)
+}
+
+// Reported: the raw signature is enough when it does not mention the receiver's type
+// parameters, so this blank method matches stack.reset.
+func (s *stack[T]) _(n int) { // want `stack\._ .* as stack\.reset \(sig\.go:247\)`
+	s.v = s.v[:n]
+	sink(n, "reset")
+	sink(s)
 }

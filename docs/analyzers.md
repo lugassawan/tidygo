@@ -219,7 +219,7 @@ Methods are named with their receiver type, for example `function right.count ha
 
 `_test.go` files and generated files (those with a `// Code generated ... DO NOT EDIT.` header) are skipped entirely, since table-test scaffolding repeats on purpose. Function literals are never compared, and neither are `init` functions: a package may declare several, and one cannot call another to share a body. Duplicates are only found within one package, and only whole bodies are compared, not repeated fragments inside different functions; the `dupl` linter covers larger token-level clones.
 
-Receiver types are not compared, so methods on different types that share a body and signature are reported even when merging them would take a refactor. A method named `_` on a generic type is never matched, since the type checker does not list it among the type's methods. Raising `min-statements` reduces such noise, and `//nolint:tidygo` on the later function silences a deliberate copy.
+Receiver types are not compared, so methods on different types that share a body and signature are reported even when merging them would take a refactor. The type checker does not list a method named `_` among its type's methods, so one on a generic type is not canonicalised: it is matched only when its signature does not mention the receiver's type parameters. Raising `min-statements` reduces such noise, and `//nolint:tidygo` on the later function silences a deliberate copy.
 
 ### Options
 
