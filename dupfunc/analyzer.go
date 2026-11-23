@@ -107,8 +107,8 @@ func collect(pass *analysis.Pass, minStmts int) []*candidate {
 	return out
 }
 
-// A function without a signature matches nothing: a missed report costs less
-// than a false one.
+// findMatch returns nil for a function without a signature: a missed report
+// costs less than a false one.
 func findMatch(group []*candidate, c *candidate) *candidate {
 	if len(group) == 0 {
 		return nil
@@ -185,8 +185,8 @@ func instantiatedMethodSignature(fn *types.Func, sig *types.Signature) *types.Si
 	return canon
 }
 
-// A package may declare several init functions, and they cannot be merged by
-// calling one from another.
+// isInit reports an init function. A package may declare several, and they
+// cannot be merged by calling one from another.
 func isInit(fd *ast.FuncDecl) bool {
 	return fd.Recv == nil && fd.Name.Name == "init"
 }

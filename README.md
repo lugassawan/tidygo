@@ -29,7 +29,7 @@ Each name links to the analyzer's page, grouped in the [index](docs/analyzers/RE
 | [`emptycomment`](docs/analyzers/emptycomment.md) | Forbids `/* */` comments that contain only whitespace and `*` |
 | [`emptyfunc`](docs/analyzers/emptyfunc.md) | Requires a comment inside function bodies with no statements |
 | [`funcname`](docs/analyzers/funcname.md) | Forbids underscores in function and method names (configurable) |
-| [`ifacename`](docs/analyzers/ifacename.md) | Requires single-method interfaces to be named after their method (`Read` → `Reader`) |
+| [`ifacename`](docs/analyzers/ifacename.md) | Requires single-method interfaces to be named after their method (`Read` → `Reader`) (configurable) |
 | [`ifinitonly`](docs/analyzers/ifinitonly.md) | Forbids `if` init variables used only in the condition |
 | [`jwtnone`](docs/analyzers/jwtnone.md) | Reports use of the JWT `none` algorithm |
 | [`maxboolops`](docs/analyzers/maxboolops.md) | Forbids boolean expressions with more than 3 `&&` and `\|\|` operators (configurable) |
@@ -48,7 +48,7 @@ Each name links to the analyzer's page, grouped in the [index](docs/analyzers/RE
 
 ## Companion linters
 
-tidygo only implements conventions nothing else checks. [Companion linters](docs/companion-linters.md) maps SonarLint's Go rules to the golangci-lint linters that already cover them, and says which are in the `standard` set and which are opt-in.
+tidygo focuses on conventions the standard linters do not check. [Companion linters](docs/companion-linters.md) maps SonarLint's Go rules to the golangci-lint linters that already cover them, and says which are in the `standard` set and which are opt-in.
 
 ## Installation
 

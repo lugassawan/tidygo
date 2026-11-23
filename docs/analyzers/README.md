@@ -1,6 +1,6 @@
 # Analyzers
 
-One page per analyzer, grouped by what it checks. Each page has a description, an example, known limitations and, where the analyzer is configurable, its options.
+One page per analyzer, grouped by what it checks. Each page has a description and an example, plus known limitations and options where they apply. For rules other linters already cover, see [companion linters](../companion-linters.md).
 
 ## Ordering
 

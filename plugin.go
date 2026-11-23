@@ -60,7 +60,8 @@ type funcNameSettings struct {
 	IncludeVars bool `json:"include-vars"`
 }
 
-// dupFuncSettings: zero or unset selects the default minimum; negative values are rejected.
+// dupFuncSettings holds the dupfunc options. Zero or unset selects the default minimum; negative values are
+// rejected.
 type dupFuncSettings struct {
 	MinStatements int `json:"min-statements"`
 }

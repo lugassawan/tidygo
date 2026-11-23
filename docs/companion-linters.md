@@ -1,6 +1,6 @@
 # Companion linters
 
-tidygo implements only conventions nothing else checks. Most of SonarLint's Go rules are already covered by linters that ship with golangci-lint. This page maps them, so you can turn on the right companions and so contributors can see what exists before proposing an analyzer.
+tidygo focuses on conventions the standard linters do not check; the few overlaps are listed below. Most of SonarLint's Go rules are already covered by linters that ship with golangci-lint. This page maps them, so you can turn on the right companions and so contributors can see what exists before proposing an analyzer.
 
 **Contributors:** check this page before proposing a new analyzer. If a rule is listed below, enable the linter instead.
 
@@ -11,7 +11,7 @@ Checked against golangci-lint v2.15.0, the version in the README's `.custom-gcl.
 | SonarLint rule | tidygo analyzer | Also available in |
 |---|---|---|
 | Functions should not have too many parameters | [`maxparams`](analyzers/maxparams.md) | revive `argument-limit` |
-| Function names should comply with a naming convention | [`funcname`](analyzers/funcname.md) | revive `var-naming` (exempts `Test*`) |
+| Function names should comply with a naming convention | [`funcname`](analyzers/funcname.md) | revive `var-naming` (exempts `Test*`, `Example*`, `Benchmark*` and `Fuzz*` in `_test.go` files only) |
 | Functions should not have identical implementations | [`dupfunc`](analyzers/dupfunc.md) | `dupl` (token threshold) |
 
 ## Standard default set
@@ -28,6 +28,7 @@ These run in golangci-lint v2 without any config: `errcheck`, `govet`, `ineffass
 | Variables should not be self-assigned | `govet` (assign), `staticcheck` SA4018 |
 | Use "bytes.Equal" instead of "bytes.Compare" | `staticcheck` S1004 |
 | Boolean literals should not be redundant | `staticcheck` S1002 (also revive `bool-literal-in-expr`) |
+| Related "if/else if" statements should not have the same condition | `staticcheck` SA4014 (also revive `identical-ifelseif-conditions`) |
 | Package imports should be consistent and avoid redundancy | `staticcheck` ST1019 (also revive `duplicated-imports`) |
 | Nested blocks of code should not be left empty | `staticcheck` SA9003 (also revive `empty-block`) |
 
@@ -43,7 +44,10 @@ golangci-lint v2 runs these through `formatters`, not `linters`.
 
 ## Opt-in linters
 
-Enable each one under `linters.enable`. The gocritic checkers listed here are also off by default, so add them to its `enabled-checks`.
+Enable each one under `linters.enable`. Two of them need more than that:
+
+- gocritic: `paramTypeCombine`, `boolExprSimplify` and `octalLiteral` are off by default, so add them to its `enabled-checks`.
+- revive: with no `rules` configured it runs its own default rule set, and most of the rules below are not in it. List every revive rule you want under `linters.settings.revive.rules`. `file-length-limit` also needs a non-zero `max`, because its default of 0 disables it.
 
 | SonarLint rule | Linter |
 |---|---|
@@ -56,7 +60,6 @@ Enable each one under `linters.enable`. The gocritic checkers listed here are al
 | Cognitive Complexity of functions should not be too high | `gocognit`, revive `cognitive-complexity` |
 | Boolean checks should not be inverted | `gocritic` boolExprSimplify |
 | Two / all branches should not have the same implementation | `gocritic` dupBranchBody, revive `identical-branches`, `identical-switch-branches` |
-| Related "if/else if" statements should not have the same condition | revive `identical-ifelseif-conditions` |
 | "switch" statements should have "default" clauses | revive `enforce-switch-style` |
 | Control flow statements should not be nested too deeply | `nestif`, revive `max-control-nesting` |
 | Functions and methods should not have too many lines | `funlen`, revive `function-length` |
@@ -113,6 +116,7 @@ linters:
     - gocognit
     - gocritic
     - gosec
+    - revive
   settings:
     custom:
       tidygo:
@@ -120,4 +124,11 @@ linters:
     gocritic:
       enabled-checks:
         - paramTypeCombine
+    revive:
+      rules:
+        - name: identical-branches
+        - name: enforce-switch-style
+        - name: file-length-limit
+          arguments:
+            - max: 500
 ```

@@ -21,6 +21,6 @@ The callee of a call is never reported, so conversions such as `(*T)(nil)` and `
 
 ## Known limitations
 
-`gofmt` already collapses doubled parentheses, so the doubled-parentheses check only fires on source that has not been formatted yet; run the linter before the formatter (the same caveat as `confusingop`). Parentheses around a type (`var t (int)`), a struct field value or an operand of a unary or binary operator are out of scope.
+`gofmt` already collapses doubled parentheses, so the doubled-parentheses check only fires on source that has not been formatted yet; run the linter before the formatter (the same caveat as [`confusingop`](confusingop.md)). Parentheses around a type (`var t (int)`), a struct field value or an operand of a unary or binary operator are out of scope.
 
 A composite literal anywhere inside a statement header keeps its parentheses, even in a call argument such as `if f((T{})) {` where they are in fact unnecessary. The analyzer errs on the side of not reporting.
