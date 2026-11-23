@@ -159,7 +159,7 @@ func TestDecodeConfigMaxCaseLines(t *testing.T) {
 	})
 }
 
-func TestBuildAnalyzersIncludesIfinitonly(t *testing.T) {
+func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
 	p, err := newPlugin(nil)
 	if err != nil {
 		t.Fatalf("newPlugin() error = %v", err)
@@ -168,29 +168,24 @@ func TestBuildAnalyzersIncludesIfinitonly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildAnalyzers() error = %v", err)
 	}
+	registered := make(map[string]bool, len(analyzers))
 	for _, a := range analyzers {
-		if a.Name == "ifinitonly" {
-			return
-		}
+		registered[a.Name] = true
 	}
-	t.Fatal("BuildAnalyzers() has no ifinitonly analyzer")
-}
-
-func TestBuildAnalyzersIncludesNoNestedSwitch(t *testing.T) {
-	p, err := newPlugin(nil)
-	if err != nil {
-		t.Fatalf("newPlugin() error = %v", err)
+	for _, name := range []string{
+		"confusingop",
+		"constcond",
+		"emptycomment",
+		"emptyfunc",
+		"ifinitonly",
+		"nonestedswitch",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if !registered[name] {
+				t.Errorf("BuildAnalyzers() has no %s analyzer", name)
+			}
+		})
 	}
-	analyzers, err := p.BuildAnalyzers()
-	if err != nil {
-		t.Fatalf("BuildAnalyzers() error = %v", err)
-	}
-	for _, a := range analyzers {
-		if a.Name == "nonestedswitch" {
-			return
-		}
-	}
-	t.Fatal("BuildAnalyzers() has no nonestedswitch analyzer")
 }
 
 func TestNewPluginPropagatesDecodeError(t *testing.T) {
