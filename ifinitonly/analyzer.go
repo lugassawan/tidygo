@@ -63,7 +63,7 @@ func initVar(ifs *ast.IfStmt) (*ast.Ident, bool) {
 // inside a function literal).
 func onlyInCond(ifs *ast.IfStmt, name string) bool {
 	cond := scanRefs(ifs.Cond, name)
-	return cond.count == 1 && cond.lazy == 0 && !cond.addr &&
-		scanRefs(ifs.Body, name).count == 0 &&
-		scanRefs(ifs.Else, name).count == 0
+	inlinable := cond.count == 1 && cond.lazy == 0 && !cond.addr
+	unusedElsewhere := scanRefs(ifs.Body, name).count == 0 && scanRefs(ifs.Else, name).count == 0
+	return inlinable && unusedElsewhere
 }
