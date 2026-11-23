@@ -20,6 +20,8 @@ x = -1   // a space shows the unary operator is intended
 
 `gofmt` rewrites `x =+ 1` to `x = +1`, which hides the typo. The analyzer only sees it in source that has not been formatted yet, so run the linter before the formatter (for example in an editor on save, or in CI before `gofmt`).
 
+golangci-lint also reports only one issue per line by default (`issues.uniq-by-line`). If the `gofmt` formatter flags the same line first, the `confusingop` finding is hidden; set `uniq-by-line: false` to see both.
+
 ## constcond
 
 Forbids `if` and `for` statements whose condition is the literal `true` or `false`. Such a condition makes one branch dead, or turns a loop into an unconditional one (`for true`) or one that never runs (`for false`). `else if` chains and `if` statements with an init clause are covered. `for {}` has no condition and is not reported.
