@@ -27,7 +27,7 @@ type Marshaler interface{ Marshal() ([]byte, error) }
 // ReaderFrom uses the standard library's "first word + -er + rest" form.
 type ReaderFrom interface{ ReadFrom() }
 
-// The first letter's case is ignored on both sides.
+// The interface name's first-letter case is ignored.
 type reader interface{ Read() }
 
 type Getter[T any] interface{ Get() T }

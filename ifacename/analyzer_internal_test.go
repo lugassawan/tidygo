@@ -6,7 +6,9 @@ import (
 )
 
 const (
-	read      = "Read"
+	read = "Read"
+	// readLower is a defensive input: checkSpec skips unexported methods, so the
+	// helpers never see one in practice, but they stay first-letter-case insensitive.
 	readLower = "read"
 	readFrom  = "ReadFrom"
 	serveHTTP = "ServeHTTP"

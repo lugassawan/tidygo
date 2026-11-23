@@ -21,7 +21,7 @@ func _() {} // blank identifier is allowed
 
 Requires a single-method interface to be named after its method plus an agent-noun suffix, the way the standard library does (`Read` → `Reader`, `Close` → `Closer`). The check is purely syntactic.
 
-An interface is checked when its body is exactly one exported method. Interfaces that embed another interface, contain a type-set element (`~int | ~string`), declare more than one method, or have an unexported sole method (sealed and marker interfaces such as `type Node interface{ isNode() }` or `type Option interface{ apply(*cfg) }`) are skipped. Local (function-scope) and generic interfaces are checked too.
+An interface is checked when its body is exactly one exported method. Interfaces that embed another interface, contain a type-set element (`~int | ~string`), declare more than one method, or have an unexported sole method (the sealed-interface pattern, such as `type Node interface{ isNode() }` or `type Option interface{ apply(*cfg) }`) are skipped. Local (function-scope) and generic interfaces are checked too.
 
 Accepted spellings are compared ignoring the case of the first letter. For a method `w`:
 
@@ -55,6 +55,7 @@ The diagnostic's suggested name is a heuristic example, not the only accepted sp
 The rule is deliberately strict, so a few common, idiomatic shapes are reported and need `allowed-names`:
 
 - **Multi-word methods** are matched by suffixing the *first* word only (`GetUser` → `GetterUser`), so `UserGetter` is reported. The same applies to the "object + agent noun" names in the standard library: `ByteReader` (`ReadByte`), `RuneReader`, `StringWriter` (`WriteString`), `TextMarshaler`, and `Marshaler` for `MarshalJSON`.
+- **Exported marker methods** are still reported, because only an *unexported* sole method is skipped: `type Expr interface{ Expr() }` suggests `Exprer` and `type EventMarker interface{ IsEvent() }` suggests `IserEvent`.
 - **Type aliases** (`type X = interface{ Read() }`) are checked like any other declaration.
 - **`Error() string`** interfaces, because `Error` → `Errorer`.
 
