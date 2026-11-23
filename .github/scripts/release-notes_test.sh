@@ -15,21 +15,27 @@ fail() {
 	FAILED=1
 }
 
-# Commit with an isolated identity and no hooks/signing so the caller's global
-# git config cannot interfere.
+# Keep the throwaway repo hermetic: ignore a surrounding git hook's repo/identity
+# env and the caller's global/system config (GIT_CONFIG_GLOBAL needs git >= 2.32).
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE \
+	GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+
+# Fixed identity, no signing, no commit hooks.
 commit() {
 	git -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false \
 		commit -q --allow-empty --no-verify -m "$1"
 }
 
-# Don't let a surrounding git hook's environment redirect our throwaway repo.
-unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
-
 cd "$TMP"
 git init -q
 
 commit "initial import"
+# Non-ASCII first letter stays as-is (LC_ALL=C); also guards the BSD awk abort
+# when run locally on macOS.
 commit "docs: éclair README"
+# %, \ and & must survive verbatim (guards printf "$line" / awk -v regressions).
+commit 'docs: handle 100%, a\b and a&b'
 commit "chore: ignore local files"
 commit "docs: update README"
 commit "ci: bump checkout action"
@@ -52,6 +58,7 @@ cat >expected <<'EOF'
 - Bump checkout action
 - Update README
 - Ignore local files
+- Handle 100%, a\b and a&b
 - éclair README
 - Initial import
 EOF

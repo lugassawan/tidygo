@@ -5,16 +5,15 @@
 # Commits are classified by the Conventional-Commit prefix that
 # .githooks/commit-msg enforces: "feat: " and "fix: " get their own sections;
 # every other subject lands in "Other Changes". Every section has its
-# "type: " prefix stripped and its bullets capitalized.
+# "type: " prefix stripped and its bullets capitalized (ASCII first letters).
 set -eu
 
 RANGE=${1:?usage: release-notes.sh <git-range>}
 
 SUBJECTS=$(git log "$RANGE" --no-merges --pretty=format:%s)
 
-# Turn subjects on stdin into capitalized markdown bullets. awk, not sed:
-# BSD sed (macOS) has no \u, so it cannot capitalize portably. LC_ALL=C keeps
-# BSD awk from aborting when a subject starts with a multibyte character.
+# awk, not sed: BSD sed has no \u. LC_ALL=C stops BSD awk aborting on a
+# multibyte first char (so a non-ASCII first letter stays uncapitalized).
 bullets() {
 	LC_ALL=C awk 'NF { print "- " toupper(substr($0, 1, 1)) substr($0, 2) }'
 }
