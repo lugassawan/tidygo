@@ -2,14 +2,15 @@
 
 ## confusingop
 
-Reports an assignment where `=` is written directly against a unary `+`, `-`, `!` or `^`. Go parses `x =+ 1` as `x = +1`, so the program compiles and silently assigns instead of adding. The diagnostic is raised only when nothing sits between `=` and the operator; `x = +1` and an operator on the next line are accepted as deliberate. Only the first right-hand value is checked, so `a, b =-1, 2` is reported too.
+Reports an assignment where `=` is written directly against a unary `+`, `-`, `!` or `^`. Go parses `x =+ 1` as `x = +1`, so the program compiles and silently assigns instead of adding. The diagnostic is raised only when nothing sits between `=` and the operator; `x = +1` and an operator on the next line are accepted as deliberate. Only the first right-hand value is checked, so `a, b =-1, 2` is reported too. The operator may also start a larger expression: `total =+ price * qty` is reported because `+price` is its leftmost operand.
 
 ```go
 // Bad
-x =+ 1  // meant x += 1
-x =- 1  // meant x -= 1
-ok =!done // meant ok != done
-x =^ 1  // meant x ^= 1
+x =+ 1               // meant x += 1
+x =- 1               // meant x -= 1
+x =^ 1               // meant x ^= 1
+total =+ price * qty // meant total += price * qty
+ok =!done            // missing space? write ok = !done
 
 // Good
 x += 1
@@ -24,7 +25,7 @@ golangci-lint also reports only one issue per line by default (`issues.uniq-by-l
 
 ## constcond
 
-Forbids `if` and `for` statements whose condition is the literal `true` or `false`. Such a condition makes one branch dead, or turns a loop into an unconditional one (`for true`) or one that never runs (`for false`). `else if` chains and `if` statements with an init clause are covered. `for {}` has no condition and is not reported.
+Forbids `if` and `for` statements whose condition is the literal `true` or `false`. Such a condition makes one branch dead, or turns a loop into an unconditional one (`for true`) or one that never runs (`for false`). Parentheses are ignored, and `else if` chains and `if` statements with an init clause are covered. `for {}` has no condition and is not reported.
 
 ```go
 // Bad
@@ -42,7 +43,7 @@ for { run() }
 
 ### Known limitations
 
-The check matches the identifier name only. A local variable that shadows `true` or `false` is still reported; the `predeclared` linter already flags such shadowing.
+The plugin runs in syntax-only mode, so the check matches the identifier name only. A local variable that shadows `true` or `false` is still reported; enable the `predeclared` linter to catch such shadowing. Expressions that merely evaluate to a constant (`!true`, `true && x`, a named constant) are not detected.
 
 ## emptycomment
 

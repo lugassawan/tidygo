@@ -32,7 +32,7 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 		// Only the first right-hand side can touch the "=": in `a, b =-1, 2`
 		// the operator belongs to Rhs[0].
-		unary, ok := stmt.Rhs[0].(*ast.UnaryExpr)
+		unary, ok := leadingUnary(stmt.Rhs[0])
 		if !ok || !isConfusing(unary.Op) {
 			return
 		}
@@ -48,6 +48,22 @@ func run(pass *analysis.Pass) (any, error) {
 	})
 
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
+}
+
+// leadingUnary returns the unary expression that starts e. Unary operators bind
+// tighter than any binary one, so in `=+ y * 2` the right-hand side is the
+// binary expression (+y) * 2 and the unary is its leftmost operand.
+func leadingUnary(e ast.Expr) (*ast.UnaryExpr, bool) {
+	for {
+		switch x := e.(type) {
+		case *ast.BinaryExpr:
+			e = x.X
+		case *ast.UnaryExpr:
+			return x, true
+		default:
+			return nil, false
+		}
+	}
 }
 
 func isConfusing(op token.Token) bool {

@@ -13,6 +13,10 @@ func MultiLine() {
 // OutsideAbove has a comment, but it sits outside the braces.
 func OutsideAbove() {} // want `function "OutsideAbove" has an empty body; add a comment explaining why`
 
+func BeforeBrace()/* comment before the brace */ {} // want `function "BeforeBrace" has an empty body; add a comment explaining why`
+
+func external() int
+
 func Literal() {
 	_ = func() {} // want `function has an empty body; add a comment explaining why`
 

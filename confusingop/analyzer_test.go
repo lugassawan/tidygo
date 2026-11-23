@@ -18,7 +18,7 @@ import (
 // escapes so they survive both this raw string and analysistest's parsing.
 const fixture = `package example
 
-func typos(b bool) {
+func typos(b, d bool) {
 	x := 1
 	var a, c int
 
@@ -29,6 +29,11 @@ func typos(b bool) {
 
 	a, c =-1, 2 // want ".=[-]. looks like a typo for .[-]=."
 
+	// The unary operator can be the leftmost operand of a binary expression.
+	x =+ a * 2 // want ".=[+]. looks like a typo for .[+]=."
+	x =-a + 1  // want ".=[-]. looks like a typo for .[-]=."
+	b =!b && d // want ".=[!]. looks like a typo for .[!]=."
+
 	x = +1
 	x = -x
 	x += 1
@@ -37,8 +42,11 @@ func typos(b bool) {
 	x =
 		+1
 	a, c = 1, -2
+	x = +a * 2
+	x = a + -1
+	x = a * -1
 
-	_, _, _, _ = x, y, a, c
+	_, _, _, _, _ = x, y, a, c, d
 }
 `
 
