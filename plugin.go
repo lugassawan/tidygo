@@ -7,6 +7,7 @@ import (
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/lugassawan/tidygo/aeadcipher"
 	"github.com/lugassawan/tidygo/atomiccreate"
 	"github.com/lugassawan/tidygo/busywait"
 	"github.com/lugassawan/tidygo/confusingop"
@@ -19,6 +20,7 @@ import (
 	"github.com/lugassawan/tidygo/funcname"
 	"github.com/lugassawan/tidygo/ifacename"
 	"github.com/lugassawan/tidygo/ifinitonly"
+	"github.com/lugassawan/tidygo/jwtnone"
 	"github.com/lugassawan/tidygo/maxboolops"
 	"github.com/lugassawan/tidygo/maxcaselines"
 	"github.com/lugassawan/tidygo/maxcases"
@@ -31,6 +33,7 @@ import (
 	"github.com/lugassawan/tidygo/nonestedswitch"
 	"github.com/lugassawan/tidygo/redundantparen"
 	"github.com/lugassawan/tidygo/txrollback"
+	"github.com/lugassawan/tidygo/weakpwhash"
 )
 
 func init() {
@@ -120,6 +123,7 @@ type plugin struct {
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	analyzers := []*analysis.Analyzer{
+		aeadcipher.Analyzer,
 		atomiccreate.Analyzer,
 		busywait.Analyzer,
 		confusingop.Analyzer,
@@ -131,6 +135,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		p.funcname,
 		p.ifacename,
 		ifinitonly.Analyzer,
+		jwtnone.Analyzer,
 		p.maxboolops,
 		p.maxcaselines,
 		p.maxcases,
@@ -143,6 +148,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		nonestedswitch.Analyzer,
 		redundantparen.Analyzer,
 		txrollback.Analyzer,
+		weakpwhash.Analyzer,
 	}
 	// elseifelse is opt-in: it stays out of the build unless `elseifelse.enabled` is set.
 	if p.elseifelse {
@@ -151,10 +157,10 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return analyzers, nil
 }
 
-// GetLoadMode asks for type information: deferredcancel, txrollback, busywait and
-// atomiccreate resolve callees through pass.TypesInfo. golangci-lint skips every
-// analyzer on a package that fails to type-check, so the syntax-only analyzers go
-// quiet on non-compiling code too.
+// GetLoadMode asks for type information, because the callee-resolving analyzers
+// read pass.TypesInfo. golangci-lint skips every analyzer on a package that
+// fails to type-check, so the syntax-only analyzers go quiet on non-compiling
+// code too.
 func (p *plugin) GetLoadMode() string {
 	return register.LoadModeTypesInfo
 }
