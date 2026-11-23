@@ -4,11 +4,19 @@
 // overrides the minimum), test files and generated files are skipped, and
 // function literals and init functions are ignored.
 //
+// The signatures must match too: functions whose parameter or result types
+// differ, such as clampInt and clampFloat, cannot be merged without generics and
+// are not reported. Types are compared as the type checker resolves them, so
+// byte matches uint8, an alias matches its target, and generic functions match up
+// to the names of their type parameters. Receivers and parameter names are not
+// compared, so methods on different types with the same signature are reported,
+// except methods of different generic types, whose type parameters are distinct.
+//
 // Bodies are compared structurally: positions, comments and layout are
 // ignored, but identifier names, literals and operators must match exactly, so
 // a renamed local variable makes a body different. Each later duplicate is
-// reported against the first function by file name and offset, so a //nolint
-// directive belongs on the later function.
+// reported against the first earlier function with an identical signature, by
+// file name and offset, so a //nolint directive belongs on the later function.
 package dupfunc
 
 import (
@@ -16,6 +24,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"go/types"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -36,8 +45,8 @@ type Config struct {
 	MinStmts int
 }
 
-// Analyzer reports functions with the same body as an earlier function in the
-// package, comparing bodies of at least DefaultMinStmts statements.
+// Analyzer reports functions with the same body and signature as an earlier
+// function in the package, comparing bodies of at least DefaultMinStmts statements.
 var Analyzer = New(Config{})
 
 // New builds a dupfunc analyzer with the given configuration.
@@ -48,7 +57,7 @@ func New(cfg Config) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "dupfunc",
-		Doc:  "forbids functions whose bodies are identical to an earlier function in the same package",
+		Doc:  "forbids functions whose bodies and signatures are identical to an earlier function in the same package",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, minStmts)
 		},
@@ -59,6 +68,11 @@ func New(cfg Config) *analysis.Analyzer {
 type candidate struct {
 	decl *ast.FuncDecl
 	pos  token.Position
+	// fn is the type checker's object for the function, nil when it has none.
+	fn *types.Func
+	// sig is the canonical signature, resolved on first use; see signature.
+	sig         *types.Signature
+	sigResolved bool
 }
 
 func run(pass *analysis.Pass, minStmts int) (any, error) {
@@ -66,19 +80,22 @@ func run(pass *analysis.Pass, minStmts int) (any, error) {
 
 	// Sort by position so the "first" function, and so every report, is
 	// deterministic regardless of the order the files were loaded in.
-	slices.SortFunc(candidates, func(a, b candidate) int {
+	slices.SortFunc(candidates, func(a, b *candidate) int {
 		return cmp.Or(
 			strings.Compare(a.pos.Filename, b.pos.Filename),
 			cmp.Compare(a.pos.Offset, b.pos.Offset),
 		)
 	})
 
-	first := make(map[string]candidate)
+	// Functions with the same body are grouped, and within a group each
+	// signature class keeps only its first function: a later function is
+	// reported against the first earlier one whose signature is identical.
+	classes := make(map[string][]*candidate)
 	for _, c := range candidates {
 		key := bodyKey(c.decl.Body)
-		orig, seen := first[key]
-		if !seen {
-			first[key] = c
+		orig := findMatch(classes[key], c)
+		if orig == nil {
+			classes[key] = append(classes[key], c)
 			continue
 		}
 		pass.Reportf(c.decl.Name.Pos(), "function %s has the same body as %s (%s:%d)",
@@ -89,8 +106,8 @@ func run(pass *analysis.Pass, minStmts int) (any, error) {
 }
 
 // collect returns the functions large enough to compare, skipping test and generated files.
-func collect(pass *analysis.Pass, minStmts int) []candidate {
-	var out []candidate
+func collect(pass *analysis.Pass, minStmts int) []*candidate {
+	var out []*candidate
 	for _, f := range pass.Files {
 		if strings.HasSuffix(pass.Fset.File(f.Pos()).Name(), "_test.go") || ast.IsGenerated(f) {
 			continue
@@ -100,10 +117,90 @@ func collect(pass *analysis.Pass, minStmts int) []candidate {
 			if !ok || fd.Body == nil || len(fd.Body.List) < minStmts || isInit(fd) {
 				continue
 			}
-			out = append(out, candidate{decl: fd, pos: pass.Fset.Position(fd.Pos())})
+			fn, _ := pass.TypesInfo.Defs[fd.Name].(*types.Func)
+			out = append(out, &candidate{decl: fd, pos: pass.Fset.Position(fd.Pos()), fn: fn})
 		}
 	}
 	return out
+}
+
+// findMatch returns the first function in group whose signature is identical to
+// c's, or nil. A function without a signature matches nothing: a missed report
+// costs less than a false one.
+func findMatch(group []*candidate, c *candidate) *candidate {
+	if len(group) == 0 {
+		return nil
+	}
+	sig := c.signature()
+	if sig == nil {
+		return nil
+	}
+	for _, g := range group {
+		if gs := g.signature(); gs != nil && types.Identical(gs, sig) {
+			return g
+		}
+	}
+	return nil
+}
+
+// signature returns the canonical signature of c, or nil when the type checker
+// recorded none. It is resolved lazily, so a function that shares its body with
+// no other never pays for it.
+func (c *candidate) signature() *types.Signature {
+	if !c.sigResolved {
+		c.sigResolved = true
+		if c.fn != nil {
+			c.sig = canonicalSignature(c.fn)
+		}
+	}
+	return c.sig
+}
+
+// canonicalSignature returns the signature of fn. Each method of a generic type
+// declares its own receiver type parameters, so (*box[T]).put(x T) and
+// (*box[X]).other(x X) would never be identical; the signature is therefore
+// re-read through the receiver type instantiated with its own type parameters,
+// which gives every method of the type one shared set. Where that fails, the raw
+// signature is used.
+func canonicalSignature(fn *types.Func) *types.Signature {
+	sig, ok := fn.Type().(*types.Signature)
+	if !ok || sig.RecvTypeParams().Len() == 0 {
+		return sig
+	}
+	if canon := instantiatedMethodSignature(fn, sig); canon != nil {
+		return canon
+	}
+	return sig
+}
+
+// instantiatedMethodSignature looks fn up on its receiver's base type
+// instantiated with that type's own type parameters, or returns nil.
+func instantiatedMethodSignature(fn *types.Func, sig *types.Signature) *types.Signature {
+	t := types.Unalias(sig.Recv().Type())
+	if p, ok := t.(*types.Pointer); ok {
+		t = types.Unalias(p.Elem())
+	}
+	named, ok := t.(*types.Named)
+	if !ok {
+		return nil
+	}
+	origin := named.Origin()
+	tparams := origin.TypeParams()
+	targs := make([]types.Type, tparams.Len())
+	for i := range targs {
+		targs[i] = tparams.At(i)
+	}
+	inst, err := types.Instantiate(nil, origin, targs, false)
+	if err != nil {
+		return nil
+	}
+	obj, _, _ := types.LookupFieldOrMethod(types.NewPointer(inst), true, fn.Pkg(), fn.Name())
+	m, ok := obj.(*types.Func)
+	if !ok {
+		return nil
+	}
+	canon, _ := m.Type().(*types.Signature)
+	return canon
 }
 
 // isInit reports whether fd is a package-level init function. A package may

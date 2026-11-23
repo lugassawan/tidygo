@@ -21,7 +21,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `confusingop` | Reports `=+`, `=-`, `=!` and `=^` assignments that look like typos for `+=`, `-=`, `!=` and `^=` |
 | `constcond` | Forbids `if` and `for` statements whose condition is the literal `true` or `false` |
 | `deferredcancel` | Requires the cancel func from `context.WithCancel`/`WithTimeout`/`WithDeadline` to be deferred immediately |
-| `dupfunc` | Reports functions whose bodies (at least 3 statements) are identical to an earlier function in the same package (configurable) |
+| `dupfunc` | Reports functions with the same body (at least 3 statements) and signature as an earlier function in the same package (configurable) |
 | `elseifelse` | Requires an `if … else if` chain to end in a final `else` (opt-in, off by default) |
 | `emptycomment` | Forbids `/* */` block comments that contain only whitespace and `*` |
 | `emptyfunc` | Requires a comment inside function bodies that contain no statements |

@@ -1,7 +1,8 @@
 package example
 
 // Every pair below differs in one detail only, so none of them is reported.
-// Each body has three statements, the smallest size that is compared.
+// Each body has three statements, the smallest size that is compared, and the
+// signatures are identical, so only the body tells them apart.
 
 var pk int
 
@@ -145,13 +146,13 @@ func nestedB(a, b int) {
 }
 
 // The same children walk differently split across the sides of the assignment.
-func threeFromOne(f func() (int, int, int)) {
+func threeFromOne(f func() (int, int, int), g func() int) {
 	var a, b, c int
 	a, b, c = f()
 	sink(a, b, c)
 }
 
-func twoFromTwo(f func() int) {
+func twoFromTwo(g func() (int, int, int), f func() int) {
 	var a, b, c int
 	a, b = c, f()
 	sink(a, b, c)
@@ -182,7 +183,7 @@ func commentedLocal(x int) int {
 }
 
 // Reported: a comment on a local declaration does not make the bodies different.
-func plainLocal(x int) int { // want `function plainLocal has the same body as commentedLocal \(e\.go:177\)`
+func plainLocal(x int) int { // want `function plainLocal has the same body as commentedLocal \(e\.go:178\)`
 	var y = x * 2
 	sink(y)
 	return y
@@ -224,7 +225,7 @@ func selectDefault(a chan int) {
 type T []int
 
 // A typed literal differs from an elided one whose first element is that type's name.
-func litTyped() {
+func litTyped(n int) {
 	sink(1)
 	sink(2)
 	sink([][]int{T{1, 2}})
