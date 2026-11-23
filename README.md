@@ -99,7 +99,7 @@ make init
 
 | Target     | Description                                       |
 |------------|---------------------------------------------------|
-| `init`     | Install tools, trust mise config, set up git hooks|
+| `init`     | Trust mise config, install tools, set up git hooks|
 | `build`    | Build custom golangci-lint with tidygo plugin     |
 | `lint`     | Build and run golangci-lint (dogfooding)          |
 | `fmt`      | Format all Go files with gofmt and golines        |
