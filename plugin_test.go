@@ -20,7 +20,9 @@ const (
 	ifaceNameKey = "ifacename"
 	handlerIface = "Handler"
 	maxCasesKey  = "maxcases"
-	maxKey       = "max"
+
+	maxCaseLinesKey = "maxcaselines"
+	maxKey          = "max"
 )
 
 func TestDecodeConfig(t *testing.T) {
@@ -120,6 +122,44 @@ func TestDecodeConfigMaxCases(t *testing.T) {
 	})
 }
 
+func TestDecodeConfigMaxCaseLines(t *testing.T) {
+	t.Run("max reaches the maxcaselines config", func(t *testing.T) {
+		conf := map[string]any{maxCaseLinesKey: map[string]any{maxKey: 3}}
+		got, err := decodeConfig(conf)
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		if got.maxcaselines.Max != 3 {
+			t.Errorf("decodeConfig() maxcaselines = %+v, want Max=3", got.maxcaselines)
+		}
+		if got.maxcases.Max != 0 {
+			t.Errorf("decodeConfig() maxcases = %+v, want zero config", got.maxcases)
+		}
+	})
+
+	t.Run("unknown maxcaselines key is rejected", func(t *testing.T) {
+		conf := map[string]any{maxCaseLinesKey: map[string]any{"maximum": 3}}
+		_, err := decodeConfig(conf)
+		if err == nil {
+			t.Fatal("decodeConfig() error = nil, want unknown-field error")
+		}
+		if !strings.Contains(err.Error(), "maximum") {
+			t.Errorf("error %q does not name the unknown field", err)
+		}
+	})
+
+	t.Run("negative max is rejected", func(t *testing.T) {
+		conf := map[string]any{maxCaseLinesKey: map[string]any{maxKey: -1}}
+		_, err := decodeConfig(conf)
+		if err == nil {
+			t.Fatal("decodeConfig() error = nil, want negative-max error")
+		}
+		if !strings.Contains(err.Error(), maxCaseLinesKey) {
+			t.Errorf("error %q does not name the setting", err)
+		}
+	})
+}
+
 func TestBuildAnalyzersIncludesIfinitonly(t *testing.T) {
 	p, err := newPlugin(nil)
 	if err != nil {
@@ -206,6 +246,32 @@ func TestNewPluginWiresMaxCasesConfigIntoAnalyzer(t *testing.T) {
 	}
 	// The custom package only passes if max reached the analyzer.
 	testdata, err := filepath.Abs(filepath.Join("maxcases", "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "custom")
+}
+
+func TestNewPluginWiresMaxCaseLinesConfigIntoAnalyzer(t *testing.T) {
+	p, err := newPlugin(map[string]any{maxCaseLinesKey: map[string]any{maxKey: 3}})
+	if err != nil {
+		t.Fatalf("newPlugin() error = %v", err)
+	}
+	analyzers, err := p.BuildAnalyzers()
+	if err != nil {
+		t.Fatalf("BuildAnalyzers() error = %v", err)
+	}
+	var got *analysis.Analyzer
+	for _, a := range analyzers {
+		if a.Name == maxCaseLinesKey {
+			got = a
+		}
+	}
+	if got == nil {
+		t.Fatal("BuildAnalyzers() has no maxcaselines analyzer")
+	}
+	// The custom package only passes if max reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(maxCaseLinesKey, "testdata"))
 	if err != nil {
 		t.Fatalf("resolving testdata: %v", err)
 	}

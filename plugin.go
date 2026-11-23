@@ -10,6 +10,7 @@ import (
 	"github.com/lugassawan/tidygo/funcname"
 	"github.com/lugassawan/tidygo/ifacename"
 	"github.com/lugassawan/tidygo/ifinitonly"
+	"github.com/lugassawan/tidygo/maxcaselines"
 	"github.com/lugassawan/tidygo/maxcases"
 	"github.com/lugassawan/tidygo/maxparams"
 	"github.com/lugassawan/tidygo/nolateconst"
@@ -26,6 +27,7 @@ func init() {
 // Unknown keys are rejected by register.DecodeSettings, so typos fail loudly.
 type settings struct {
 	IfaceName    ifaceNameSettings    `json:"ifacename"`
+	MaxCaseLines maxSettings          `json:"maxcaselines"`
 	MaxCases     maxSettings          `json:"maxcases"`
 	NoLateExport noLateExportSettings `json:"nolateexport"`
 }
@@ -47,12 +49,14 @@ type noLateExportSettings struct {
 // config holds the decoded per-analyzer configuration.
 type config struct {
 	ifacename    ifacename.Config
+	maxcaselines maxcaselines.Config
 	maxcases     maxcases.Config
 	nolateexport nolateexport.Config
 }
 
 type plugin struct {
 	ifacename    *analysis.Analyzer
+	maxcaselines *analysis.Analyzer
 	maxcases     *analysis.Analyzer
 	nolateexport *analysis.Analyzer
 }
@@ -62,6 +66,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		funcname.Analyzer,
 		p.ifacename,
 		ifinitonly.Analyzer,
+		p.maxcaselines,
 		p.maxcases,
 		maxparams.Analyzer,
 		nolateconst.Analyzer,
@@ -82,9 +87,27 @@ func newPlugin(conf any) (register.LinterPlugin, error) {
 	}
 	return &plugin{
 		ifacename:    ifacename.New(cfg.ifacename),
+		maxcaselines: maxcaselines.New(cfg.maxcaselines),
 		maxcases:     maxcases.New(cfg.maxcases),
 		nolateexport: nolateexport.New(cfg.nolateexport),
 	}, nil
+}
+
+// validateMax rejects negative limits so a typo does not silently fall back to the default.
+func validateMax(s settings) error {
+	limits := []struct {
+		name string
+		max  int
+	}{
+		{"maxcaselines", s.MaxCaseLines.Max},
+		{"maxcases", s.MaxCases.Max},
+	}
+	for _, l := range limits {
+		if l.max < 0 {
+			return fmt.Errorf("%s.max must not be negative, got %d", l.name, l.max)
+		}
+	}
+	return nil
 }
 
 func decodeConfig(conf any) (config, error) {
@@ -92,11 +115,12 @@ func decodeConfig(conf any) (config, error) {
 	if err != nil {
 		return config{}, err
 	}
-	if s.MaxCases.Max < 0 {
-		return config{}, fmt.Errorf("maxcases.max must not be negative, got %d", s.MaxCases.Max)
+	if err := validateMax(s); err != nil {
+		return config{}, err
 	}
 	return config{
 		ifacename:    ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
+		maxcaselines: maxcaselines.Config{Max: s.MaxCaseLines.Max},
 		maxcases:     maxcases.Config{Max: s.MaxCases.Max},
 		nolateexport: nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast},
 	}, nil
