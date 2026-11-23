@@ -36,7 +36,7 @@ const (
 	messageSigningMethodNone = "jwt.SigningMethodNone produces unsigned tokens: " +
 		"sign with an HMAC, RSA, ECDSA or EdDSA method"
 	messageAllowNone = "jwt.UnsafeAllowNoneSignatureType lets unsigned tokens verify: " +
-		"remove it and restrict methods with jwt.WithValidMethods"
+		"remove it and restrict the accepted signing methods"
 )
 
 var messages = map[string]string{

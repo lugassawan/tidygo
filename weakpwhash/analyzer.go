@@ -38,6 +38,7 @@ type rule struct {
 	saltArg  int
 	costArg  int
 	costName string
+	costUnit string
 	from     int64
 	min      int64
 }
@@ -61,7 +62,7 @@ var rules = []rule{
 	},
 	{
 		pkg: "golang.org/x/crypto/argon2", names: []string{keyFunc, "IDKey"},
-		saltArg: 1, costArg: 3, costName: "memory", min: 19_456,
+		saltArg: 1, costArg: 3, costName: "memory", costUnit: " KiB", min: 19_456,
 	},
 	{
 		pkg: "golang.org/x/crypto/bcrypt", names: []string{"GenerateFromPassword"},
@@ -104,7 +105,8 @@ func checkCall(pass *analysis.Pass, call *ast.CallExpr, r rule) {
 		return
 	}
 	if cost, ok := constInt(pass.TypesInfo, arg); ok && cost >= r.from && cost < r.min {
-		pass.Reportf(arg.Pos(), "%s %s %d is below the minimum %d", name, r.costName, cost, r.min)
+		pass.Reportf(arg.Pos(), "%s %s %d%s is below the minimum %d%[4]s",
+			name, r.costName, cost, r.costUnit, r.min)
 	}
 }
 

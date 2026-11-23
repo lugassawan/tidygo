@@ -4,6 +4,7 @@ import (
 	"crypto/pbkdf2"
 	"crypto/rand"
 	"crypto/sha256"
+	"hash"
 
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
@@ -48,8 +49,15 @@ func scryptKey(pw, salt []byte, n int) {
 func argon2Keys(pw, salt []byte, mem uint32) {
 	_ = argon2.Key(pw, nil, 1, 65536, 4, 32)           // want `argon2.Key uses a constant salt`
 	_ = argon2.IDKey(pw, []byte("s"), 1, 65536, 4, 32) // want `argon2.IDKey uses a constant salt`
-	_ = argon2.Key(pw, salt, 1, 4096, 4, 32)           // want `argon2.Key memory 4096 is below the minimum 19456`
-	_ = argon2.IDKey(pw, salt, 1, 19455, 4, 32)        // want `argon2.IDKey memory 19455 is below the minimum 19456`
+	_ = argon2.Key(
+		pw,
+		salt,
+		1,
+		4096,
+		4,
+		32,
+	) // want `argon2.Key memory 4096 KiB is below the minimum 19456 KiB`
+	_ = argon2.IDKey(pw, salt, 1, 19455, 4, 32) // want `argon2.IDKey memory 19455 KiB is below`
 	_ = argon2.IDKey(pw, salt, 1, 19456, 4, 32)
 	_ = argon2.IDKey(pw, salt, 1, mem, 4, 32)
 }
@@ -62,6 +70,13 @@ func bcryptCost(pw []byte, cost int) {
 	_, _ = bcrypt.GenerateFromPassword(pw, 0) // bcrypt substitutes DefaultCost
 	_, _ = bcrypt.GenerateFromPassword(pw, 3) // bcrypt substitutes DefaultCost
 	_, _ = bcrypt.GenerateFromPassword(pw, cost)
+}
+
+func edgeCases(pw string) {
+	h := sha256.New
+
+	_, _ = pbkdf2.Key(h, pw, []byte{}, 600000, 32)               // want `constant salt`
+	_, _ = pbkdf2.Key[hash.Hash](h, pw, []byte("s"), 600000, 32) // want `constant salt`
 }
 
 func randomSalt(pw string) {

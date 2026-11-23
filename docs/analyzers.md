@@ -378,6 +378,7 @@ parser := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"}))
 
 ### Known limitations
 
+- Every reference is reported, including defensive ones such as `if tok.Method == jwt.SigningMethodNone { reject }` or a test asserting that a none token is rejected. Suppress those with `//nolint:tidygo // reason`.
 - Only references to the two identifiers are reported. A parser that accepts any algorithm because it has no `WithValidMethods` check is not detected, and neither is a runtime `alg` header check.
 - Other JWT libraries (`lestrrat-go/jwx`, `golang-jwt/jwt` v3) are not covered.
 
