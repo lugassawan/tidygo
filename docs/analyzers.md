@@ -47,6 +47,96 @@ for { run() }
 
 The plugin runs in syntax-only mode, so the check matches the identifier name only. A local variable that shadows `true` or `false` is still reported; enable the `predeclared` linter to catch such shadowing. Expressions that merely evaluate to a constant (`!true`, `true && x`, a named constant) are not detected.
 
+## dupfunc
+
+Reports a function or method whose body is identical to that of an earlier function in the same package. Copy-pasted bodies drift apart when only one copy is fixed; extract the shared logic and call it from both. Only bodies with at least 3 top-level statements are compared, so trivial getters and one-line wrappers are left alone.
+
+Bodies are compared structurally. Positions, comments and layout are ignored, but identifier names, literals and operators must match exactly. A renamed local variable, a different constant or a different operator makes two bodies different. Only the body is compared: parameter lists and receivers are not, so two methods on different types with the same body are reported.
+
+```go
+// Bad
+func totalLen(items []string) int {
+	sum := 0
+	for _, s := range items {
+		sum += len(s)
+	}
+	return sum
+}
+
+// error: function sumAll has the same body as totalLen (lengths.go:3)
+func sumAll(items []string) int {
+	sum := 0
+	for _, s := range items {
+		sum += len(s)
+	}
+	return sum
+}
+
+// Good: one function, called from both places
+```
+
+Files are ordered by name and offset, and every later duplicate is reported against the **first** function, so the result does not depend on the order the files were loaded in. A group of three copies yields two reports, both naming the first. The diagnostic is reported at the later function, so a `//nolint:tidygo` directive goes there.
+
+Methods are named with their receiver type, for example `function right.count has the same body as left.count (types.go:5)`.
+
+This analyzer has no options.
+
+### Known limitations
+
+`_test.go` files and generated files (those with a `// Code generated ... DO NOT EDIT.` header) are skipped entirely, since table-test scaffolding repeats on purpose. Function literals are never compared. Duplicates are only found within one package, and only whole bodies are compared, not repeated fragments inside different functions; the `dupl` linter covers larger token-level clones.
+
+The analyzer runs without type information, so two identical bodies are reported even if their parameters or receivers have different types.
+
+## elseifelse
+
+Requires an `if … else if` chain to end in a final `else`. A chain without one silently ignores any case the conditions did not anticipate; a final `else` states what happens then, even if the answer is to do nothing or to fail loudly. A plain `if` and an `if … else` are never reported.
+
+**This analyzer is off by default**, because many codebases deliberately leave the last branch implicit. Turn it on with `elseifelse.enabled`.
+
+```go
+// Bad
+if x < 0 {
+	neg()
+} else if x > 0 { // error: if-else-if chain has no final else
+	pos()
+}
+
+// Good
+if x < 0 {
+	neg()
+} else if x > 0 {
+	pos()
+} else {
+	zero()
+}
+
+// OK: no else-if, so no chain
+if x < 0 {
+	neg()
+}
+```
+
+A chain is reported once, at the `if` of its last link, however long it is. An `if` nested in an `else` block (`else { if … }`) is not part of the chain, and a chain nested in the body of another chain is checked on its own.
+
+### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `enabled` | `false` | Turns the analyzer on. |
+
+```yaml
+linters:
+  settings:
+    custom:
+      tidygo:
+        type: "module"
+        settings:
+          elseifelse:
+            enabled: true
+```
+
+Unknown keys are rejected, so a typo in the option name fails loudly instead of being silently ignored.
+
 ## emptycomment
 
 Forbids `/* */` block comments that contain only whitespace and `*` characters. Empty block comments are leftovers from deleted text or unfinished stubs and carry no information. `//` comments are never reported, because an empty `//` line separates the paragraphs of a doc comment.
@@ -203,6 +293,41 @@ It cannot see these, so check them before inlining:
 Only a single-variable `:=` init is checked. Multi-value inits such as `v, ok := m[k]`, plain assignment (`n = f()`) and other init statement kinds are ignored.
 
 The analyzer runs without type information, so shadowing is resolved syntactically. A redeclaration of the same name in the body (`n := 5`, a closure parameter, a nested `if`/`for`/`switch`/`select` binding) is not counted as a use of the init variable. Where the two cannot be told apart it errs on the side of not reporting. For example, a struct-literal key such as `T{n: 1}` counts as a use, because it could be a map key that reads the variable.
+
+## maxboolops
+
+Reports a boolean expression with more than 3 `&&` and `||` operators. Long chains are hard to read and easy to get wrong; give the sub-conditions names or move them into a predicate function.
+
+Each `&&`/`||` operator counts once. Parentheses and unary `!` do not split an expression, so `(a && b) || !(c && d)` has 3 operators. Any other operand (a comparison, a call, a function literal) is a leaf: a chain inside a call argument or a closure body is its own expression and is counted separately. That keeps a struct literal with several small `a && b` fields from adding up into one finding. The diagnostic is reported once per expression, at its start.
+
+```go
+// Bad — 4 operators
+ok := a && b && c && d && e // error: boolean expression has 4 && / || operators, max is 3
+
+// Good
+inRange := lo <= x && x <= hi
+allowed := user.Active && (user.Admin || user.Owner)
+ok := inRange && allowed
+```
+
+### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `max` | `3` | Largest allowed number of `&&` and `||` operators in one expression. `0` or unset uses the default; a negative value is an error. |
+
+```yaml
+linters:
+  settings:
+    custom:
+      tidygo:
+        type: "module"
+        settings:
+          maxboolops:
+            max: 4
+```
+
+Unknown keys are rejected, so a typo in the option name fails loudly instead of being silently ignored.
 
 ## maxcaselines
 
@@ -454,3 +579,32 @@ The nearest enclosing switch-like statement in the same function decides:
 - Sibling switches, one after the other, are fine. Three switches nested in a row produce two reports, one for each inner switch.
 
 This analyzer has no options.
+
+## redundantparen
+
+Reports unnecessary parentheses around a whole value in a position where they can never change the meaning: an element of a `return`, the right-hand side of an assignment or declaration (`=`, `:=`, `op=`, `var x = …`), or a call argument. Parentheses inside a binary operand, such as `(a && b) || c` or `(a + b) * c`, are never reported, because they often clarify mixed operators or change grouping.
+
+```go
+// Bad
+return (a + b)       // error: redundant parentheses
+x := (a + b)         // error: redundant parentheses
+x += (b)             // error: redundant parentheses
+var y = (a)          // error: redundant parentheses
+use((a))             // error: redundant parentheses
+
+// Good
+return a + b
+x := a + b
+total := (a + b) * c // grouping matters
+ok := (p && q) || r  // clarifies mixed operators
+```
+
+The callee of a call is never reported, so conversions such as `(*T)(nil)` and `(func())(nil)` are kept. Parentheses that the parser needs are kept too: a composite literal in the header of an `if`, `for` or `switch` does not parse without them, so `if x := (T{}); x.ok {` is accepted.
+
+This analyzer has no options.
+
+### Known limitations
+
+Doubled parentheses such as `((x))` are not a separate case: `gofmt` already collapses them, and the outer pair of an unformatted `return ((x))` is reported like any other whole-value parenthesis. Parentheses around a type (`var t (int)`), a struct field value or an operand of a unary or binary operator are out of scope.
+
+A composite literal anywhere inside a statement header keeps its parentheses, even in a call argument such as `if f((T{})) {` where they are in fact unnecessary. The analyzer errs on the side of not reporting.

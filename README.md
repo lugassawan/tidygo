@@ -18,11 +18,14 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 |---|---|
 | `confusingop` | Reports `=+`, `=-`, `=!` and `=^` assignments that look like typos for `+=`, `-=`, `!=` and `^=` |
 | `constcond` | Forbids `if` and `for` statements whose condition is the literal `true` or `false` |
+| `dupfunc` | Reports functions whose bodies (at least 3 statements) are identical to an earlier function in the same package |
+| `elseifelse` | Requires an `if … else if` chain to end in a final `else` (opt-in, off by default) |
 | `emptycomment` | Forbids `/* */` block comments that contain only whitespace and `*` |
 | `emptyfunc` | Requires a comment inside function bodies that contain no statements |
 | `funcname` | Forbids underscores in function and method names |
 | `ifacename` | Requires single-method interfaces to be named after their method plus an agent-noun suffix (`Read` → `Reader`) |
 | `ifinitonly` | Forbids `if` init variables used only in the condition |
+| `maxboolops` | Forbids boolean expressions with more than 3 `&&` and `\|\|` operators (configurable) |
 | `maxcaselines` | Forbids `case` clause bodies that span more than 10 lines (configurable) |
 | `maxcases` | Forbids `switch`, type switch and `select` statements with more than 30 case clauses (configurable) |
 | `maxparams` | Forbids functions with more than 7 parameters |
@@ -30,6 +33,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `nolateexport` | Forbids exported functions after unexported functions, and exported methods after unexported methods of the same type |
 | `nolocalstruct` | Forbids named struct type declarations inside function bodies |
 | `nonestedswitch` | Forbids a `switch` or type switch nested inside another `switch` or type switch |
+| `redundantparen` | Forbids unnecessary parentheses around return values, assignment right-hand sides and call arguments |
 
 ## Installation
 
@@ -57,9 +61,15 @@ linters:
       tidygo:
         type: "module"
         settings:
+          # Optional: turn on the opt-in analyzer that requires a final else in if-else-if chains.
+          elseifelse:
+            enabled: true
           # Optional: exempt interface names that cannot be derived from their method.
           ifacename:
             allowed-names: [Handler]
+          # Optional: raise the most allowed && and || operators per expression (default 3).
+          maxboolops:
+            max: 4
           # Optional: raise the longest allowed case body (default 10 lines).
           maxcaselines:
             max: 15
