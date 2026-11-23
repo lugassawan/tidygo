@@ -38,3 +38,9 @@ func methods(b *bytes.Buffer, v bytes.Buffer, r *strings.Reader) {
 	r.Reset("")
 	b.Len()
 }
+
+// A local named like the package shadows the import, so its method is no match.
+func shadowedPackage() {
+	context := local{}
+	context.WithCancel()
+}

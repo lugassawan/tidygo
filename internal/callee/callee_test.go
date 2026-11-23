@@ -44,3 +44,17 @@ var probe = &analysis.Analyzer{
 func TestHelpers(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), probe, "example")
 }
+
+// A pass without type information must read as "no match", not panic.
+func TestNilInfo(t *testing.T) {
+	call := &ast.CallExpr{Fun: ast.NewIdent("f")}
+	if callee.Func(nil, call) != nil {
+		t.Error("Func(nil, call) != nil, want nil")
+	}
+	if callee.IsFunc(nil, call, "context", "WithCancel") {
+		t.Error("IsFunc(nil, call, ...) = true, want false")
+	}
+	if callee.IsMethod(nil, call, "bytes", "Buffer", "Reset") {
+		t.Error("IsMethod(nil, call, ...) = true, want false")
+	}
+}

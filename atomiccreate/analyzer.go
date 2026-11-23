@@ -2,12 +2,7 @@
 // an os.Stat not-exist check, os.Create can clobber a file a concurrent writer
 // made in between. The atomic form is os.OpenFile with O_CREATE|O_EXCL.
 //
-// It matches os.Stat/os.Lstat whose error is tested by os.IsNotExist or
-// errors.Is(err, fs.ErrNotExist), alone or joined by &&, then os.Create,
-// os.WriteFile or a non-exclusive constant-flag os.OpenFile of the same path in
-// the then-body. Paths match as equal string constants or as the same
-// identifier/selector chain (cfg.Path) not assigned in between. Helpers,
-// aliased paths and negated checks are not followed.
+// See docs/analyzers.md for what is matched and where the check stops.
 package atomiccreate
 
 import (
@@ -22,6 +17,7 @@ import (
 	"golang.org/x/tools/go/types/typeutil"
 
 	"github.com/lugassawan/tidygo/internal/callee"
+	"github.com/lugassawan/tidygo/internal/funcs"
 )
 
 // Analyzer reports os.Create, os.WriteFile and non-exclusive os.OpenFile calls
@@ -51,26 +47,10 @@ func run(pass *analysis.Pass) (any, error) {
 	if !ok {
 		return nil, nil //nolint:nilnil // analysis framework guarantees type
 	}
-	nodeFilter := []ast.Node{
-		(*ast.FuncDecl)(nil),
-		(*ast.FuncLit)(nil),
-	}
-	insp.Preorder(nodeFilter, func(n ast.Node) {
-		if body := funcBody(n); body != nil {
-			newChecker(pass, body).checkBody(body)
-		}
+	funcs.Each(insp, func(_ *ast.FuncType, body *ast.BlockStmt) {
+		newChecker(pass, body).checkBody(body)
 	})
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
-}
-
-func funcBody(n ast.Node) *ast.BlockStmt {
-	switch fn := n.(type) {
-	case *ast.FuncDecl:
-		return fn.Body
-	case *ast.FuncLit:
-		return fn.Body
-	}
-	return nil
 }
 
 func newChecker(pass *analysis.Pass, body *ast.BlockStmt) *checker {

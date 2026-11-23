@@ -14,6 +14,7 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 
 	"github.com/lugassawan/tidygo/internal/callee"
+	"github.com/lugassawan/tidygo/internal/funcs"
 )
 
 // Analyzer reports context cancel functions that are not deferred immediately.
@@ -37,28 +38,11 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil //nolint:nilnil // analysis framework guarantees type
 	}
 
-	nodeFilter := []ast.Node{
-		(*ast.FuncDecl)(nil),
-		(*ast.FuncLit)(nil),
-	}
-
-	insp.Preorder(nodeFilter, func(n ast.Node) {
-		if body := funcBody(n); body != nil {
-			checkFunc(pass, body)
-		}
+	funcs.Each(insp, func(_ *ast.FuncType, body *ast.BlockStmt) {
+		checkFunc(pass, body)
 	})
 
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
-}
-
-func funcBody(n ast.Node) *ast.BlockStmt {
-	switch fn := n.(type) {
-	case *ast.FuncDecl:
-		return fn.Body
-	case *ast.FuncLit:
-		return fn.Body
-	}
-	return nil
 }
 
 // checkFunc visits every statement list of body except those of nested function

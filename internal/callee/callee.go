@@ -15,7 +15,7 @@ import (
 // for any of the given names. Methods and calls through function values never
 // match.
 func IsFunc(info *types.Info, call *ast.CallExpr, pkgPath string, names ...string) bool {
-	fn := calledFunc(info, call)
+	fn := Func(info, call)
 	if fn == nil || fn.Pkg() == nil || fn.Pkg().Path() != pkgPath {
 		return false
 	}
@@ -28,7 +28,7 @@ func IsFunc(info *types.Info, call *ast.CallExpr, pkgPath string, names ...strin
 // IsMethod reports whether call invokes the method on pkgPath.typeName or
 // *pkgPath.typeName.
 func IsMethod(info *types.Info, call *ast.CallExpr, pkgPath, typeName, method string) bool {
-	fn := calledFunc(info, call)
+	fn := Func(info, call)
 	if fn == nil || fn.Name() != method {
 		return false
 	}
@@ -48,9 +48,9 @@ func IsMethod(info *types.Info, call *ast.CallExpr, pkgPath, typeName, method st
 	return obj.Pkg() != nil && obj.Pkg().Path() == pkgPath && obj.Name() == typeName
 }
 
-// calledFunc returns the statically known function or method call invokes, or
-// nil for conversions, builtins and calls through function values.
-func calledFunc(info *types.Info, call *ast.CallExpr) *types.Func {
+// Func returns the statically known function or method call invokes, or nil for
+// conversions, builtins, calls through function values and a nil info.
+func Func(info *types.Info, call *ast.CallExpr) *types.Func {
 	if info == nil {
 		return nil
 	}

@@ -3,7 +3,7 @@ package example
 import dbsql "database/sql"
 
 func aliasedImport(db *dbsql.DB) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back`
+	tx, err := db.Begin() // want `transaction tx has no deferred Rollback`
 	if err != nil {
 		return err
 	}

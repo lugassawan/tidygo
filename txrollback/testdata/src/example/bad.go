@@ -6,7 +6,7 @@ import (
 )
 
 func commitOnly(db *sql.DB) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back`
+	tx, err := db.Begin() // want `transaction tx has no deferred Rollback`
 	if err != nil {
 		return err
 	}
@@ -17,7 +17,7 @@ func commitOnly(db *sql.DB) error {
 }
 
 func manualRollbackOnly(db *sql.DB) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back`
+	tx, err := db.Begin() // want `transaction tx has no deferred Rollback`
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func manualRollbackOnly(db *sql.DB) error {
 }
 
 func beginTx(ctx context.Context, db *sql.DB) error {
-	tx, err := db.BeginTx(ctx, nil) // want `transaction tx is not rolled back`
+	tx, err := db.BeginTx(ctx, nil) // want `transaction tx has no deferred Rollback`
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func beginTx(ctx context.Context, db *sql.DB) error {
 }
 
 func connBeginTx(ctx context.Context, conn *sql.Conn) error {
-	t, err := conn.BeginTx(ctx, &sql.TxOptions{}) // want `transaction t is not rolled back`
+	t, err := conn.BeginTx(ctx, &sql.TxOptions{}) // want `transaction t has no deferred Rollback`
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func connBeginTx(ctx context.Context, conn *sql.Conn) error {
 }
 
 func valueSpec(db *sql.DB) error {
-	var tx, err = db.Begin() // want `transaction tx is not rolled back`
+	var tx, err = db.Begin() // want `transaction tx has no deferred Rollback`
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func valueSpec(db *sql.DB) error {
 func plainAssign(db *sql.DB) error {
 	var tx *sql.Tx
 	var err error
-	tx, err = db.Begin() // want `transaction tx is not rolled back`
+	tx, err = db.Begin() // want `transaction tx has no deferred Rollback`
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func plainAssign(db *sql.DB) error {
 }
 
 func viaWrapper(db *sql.DB) error {
-	tx, err := begin(db) // want `transaction tx is not rolled back`
+	tx, err := begin(db) // want `transaction tx has no deferred Rollback`
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func secondTxUnprotected(db *sql.DB) error {
 	}
 	defer a.Rollback()
 
-	b, err := db.Begin() // want `transaction b is not rolled back`
+	b, err := db.Begin() // want `transaction b has no deferred Rollback`
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func nestedClosureBeginsOwnTx(db *sql.DB) error {
 	defer tx.Rollback()
 
 	run := func() error {
-		inner, err := db.Begin() // want `transaction inner is not rolled back`
+		inner, err := db.Begin() // want `transaction inner has no deferred Rollback`
 		if err != nil {
 			return err
 		}
@@ -107,18 +107,6 @@ func nestedClosureBeginsOwnTx(db *sql.DB) error {
 	return tx.Commit()
 }
 
-func rollbackInNestedClosureNotCounted(db *sql.DB) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back`
-	if err != nil {
-		return err
-	}
-	release := func() {
-		defer tx.Rollback()
-	}
-	release()
-	return tx.Commit()
-}
-
 func shadowedInnerUnprotected(db *sql.DB, cond bool) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -127,7 +115,7 @@ func shadowedInnerUnprotected(db *sql.DB, cond bool) error {
 	defer tx.Rollback()
 
 	if cond {
-		tx, err := db.Begin() // want `transaction tx is not rolled back`
+		tx, err := db.Begin() // want `transaction tx has no deferred Rollback`
 		if err != nil {
 			return err
 		}
@@ -137,7 +125,7 @@ func shadowedInnerUnprotected(db *sql.DB, cond bool) error {
 }
 
 func shadowedOuterUnprotected(db *sql.DB, cond bool) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back`
+	tx, err := db.Begin() // want `transaction tx has no deferred Rollback`
 	if err != nil {
 		return err
 	}
@@ -151,7 +139,7 @@ func shadowedOuterUnprotected(db *sql.DB, cond bool) error {
 }
 
 var literal = func(db *sql.DB) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back`
+	tx, err := db.Begin() // want `transaction tx has no deferred Rollback`
 	if err != nil {
 		return err
 	}

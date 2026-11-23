@@ -719,7 +719,7 @@ This analyzer has no options.
 
 Requires a `*sql.Tx` to have a `defer tx.Rollback()` in the function that begins it. A transaction that returns early without committing or rolling back keeps its connection and any locks until the pool times out. `Rollback` after a successful `Commit` is a harmless no-op that returns `sql.ErrTxDone`, so deferring it right after `Begin` is always safe.
 
-The analyzer needs type information. It tracks any assignment or `var` whose left-hand variable is a `*database/sql.Tx` and whose right-hand side is a call, which covers `DB.Begin`, `DB.BeginTx`, `Conn.BeginTx` and your own wrappers. The deferral may be anywhere in the same function, either `defer tx.Rollback()` or a deferred function literal that calls `tx.Rollback()` (including `_ = tx.Rollback()` or inside an `if`). A manual `tx.Rollback()` in an error branch does not count, because it misses the other return paths and panics.
+The analyzer needs type information. It tracks any assignment or `var` whose left-hand variable is a `*database/sql.Tx` and whose right-hand side calls a function or method named `Begin…` or `Start…` (case-insensitive), which covers `DB.Begin`, `DB.BeginTx`, `Conn.BeginTx` and wrappers such as `beginTx(db)` or `s.startTransaction(ctx)`. The deferral may be anywhere in the same function, either `defer tx.Rollback()` or a deferred function literal that calls `tx.Rollback()` (including `_ = tx.Rollback()` or inside an `if`). A manual `tx.Rollback()` in an error branch does not count, because it misses the other return paths and panics. A `Begin` inside a `for` or `range` body is skipped: a deferred `Rollback` there would pile up until the function returns, so the fix for a per-iteration transaction is a per-iteration function.
 
 ```go
 // Bad
@@ -740,12 +740,12 @@ if err != nil {
 defer tx.Rollback()
 ```
 
-A transaction that escapes the function is skipped, because the caller owns it: when it is returned, passed as an argument (including `defer cleanup(tx)`), stored in a field or composite literal, assigned to another variable, or used in a `go` statement.
+A transaction that escapes the function is skipped, because the caller owns it: when it is returned, passed as an argument (including `defer cleanup(tx)`), stored in a field or composite literal, assigned to another variable, or used in a `go` statement. It is also treated as managed when its `Rollback` is handed to code that runs later: called inside any function literal (`t.Cleanup(func() { _ = tx.Rollback() })`), or passed on as a method value (`return tx.Commit, tx.Rollback, nil`).
 
 ### Known limitations
 
 - Only `*database/sql.Tx` is tracked; other transaction types (`pgx.Tx`, `sqlx.Tx`) are not.
 - The check does not prove a `Rollback` runs on *every* path, only that one is deferred in the function.
 - Passing the transaction to any function counts as handing over ownership, so the common `tx, _ := db.Begin(); repo.insert(tx, row); tx.Commit()` is not reported. Methods called on `tx` itself (`tx.Exec`, `tx.Commit`) are not hand-overs.
-- Any call that returns a `*sql.Tx` is treated as a `Begin`. A getter such as `tx := txFromContext(ctx)` is reported too; add `defer tx.Rollback()` or `//nolint:tidygo` where the transaction is owned elsewhere.
+- A call starts a transaction only when its name begins with `Begin` or `Start`. A getter such as `tx := txFromContext(ctx)` and a type conversion are not reported, but a wrapper with another name (`openTx`, `newUnitOfWork`) is not tracked either, and neither is a call through a function value.
 - A variable assigned from `Begin` twice in one function is reported at each assignment.

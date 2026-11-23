@@ -9,12 +9,14 @@ import (
 	"go/token"
 	"go/types"
 	"slices"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 
 	"github.com/lugassawan/tidygo/internal/callee"
+	"github.com/lugassawan/tidygo/internal/funcs"
 )
 
 // Analyzer reports transactions that are begun without a deferred Rollback.
@@ -34,34 +36,21 @@ var trackedTypes = []txType{
 	{"database/sql", "Tx"},
 }
 
+// beginPrefixes are the lower-cased name prefixes of a function that starts a
+// transaction: Begin, BeginTx, beginTx, StartTx, startTransaction.
+var beginPrefixes = []string{"begin", "start"}
+
 func run(pass *analysis.Pass) (any, error) {
 	insp, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	if !ok {
 		return nil, nil //nolint:nilnil // analysis framework guarantees type
 	}
 
-	nodeFilter := []ast.Node{
-		(*ast.FuncDecl)(nil),
-		(*ast.FuncLit)(nil),
-	}
-
-	insp.Preorder(nodeFilter, func(n ast.Node) {
-		if ftype, body := funcParts(n); body != nil {
-			checkFunc(pass, ftype, body)
-		}
+	funcs.Each(insp, func(ftype *ast.FuncType, body *ast.BlockStmt) {
+		checkFunc(pass, ftype, body)
 	})
 
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
-}
-
-func funcParts(n ast.Node) (*ast.FuncType, *ast.BlockStmt) {
-	switch fn := n.(type) {
-	case *ast.FuncDecl:
-		return fn.Type, fn.Body
-	case *ast.FuncLit:
-		return fn.Type, fn.Body
-	}
-	return nil, nil
 }
 
 func checkFunc(pass *analysis.Pass, ftype *ast.FuncType, body *ast.BlockStmt) {
@@ -71,6 +60,7 @@ func checkFunc(pass *analysis.Pass, ftype *ast.FuncType, body *ast.BlockStmt) {
 		return
 	}
 	rolledBack := deferredRollbacks(info, body)
+	handedOffRollbacks(info, body, rolledBack)
 	escaped := escapedObjects(info, body)
 	markResults(info, ftype, escaped)
 
@@ -81,7 +71,7 @@ func checkFunc(pass *analysis.Pass, ftype *ast.FuncType, body *ast.BlockStmt) {
 		}
 		pass.Reportf(
 			id.Pos(),
-			"transaction %[1]s is not rolled back on every path: add \"defer %[1]s.Rollback()\" after Begin",
+			"transaction %[1]s has no deferred Rollback: add \"defer %[1]s.Rollback()\" after Begin",
 			id.Name,
 		)
 	}
@@ -94,12 +84,14 @@ func declaredOutside(obj types.Object, body *ast.BlockStmt) bool {
 }
 
 // collectBegins returns the identifiers in body that receive a tracked
-// transaction from a call. Nested function literals are their own scope.
+// transaction from a call. Nested function literals are their own scope. Loop
+// bodies are skipped: a deferred Rollback there would pile up until the function
+// returns, so the fix for a per-iteration transaction is a per-iteration function.
 func collectBegins(info *types.Info, body *ast.BlockStmt) []*ast.Ident {
 	var begins []*ast.Ident
 	ast.Inspect(body, func(n ast.Node) bool {
 		switch node := n.(type) {
-		case *ast.FuncLit:
+		case *ast.FuncLit, *ast.ForStmt, *ast.RangeStmt:
 			return false
 		case *ast.AssignStmt:
 			begins = append(begins, beginTargets(info, identsOf(node.Lhs), node.Rhs)...)
@@ -120,7 +112,7 @@ func beginTargets(info *types.Info, lhs []*ast.Ident, rhs []ast.Expr) []*ast.Ide
 		if id == nil || id.Name == "_" || !isTrackedVar(info, id) {
 			continue
 		}
-		if isCall(valueAt(rhs, i)) {
+		if isBeginCall(info, valueAt(rhs, i)) {
 			targets = append(targets, id)
 		}
 	}
@@ -145,12 +137,25 @@ func valueAt(rhs []ast.Expr, i int) ast.Expr {
 	return nil
 }
 
-func isCall(e ast.Expr) bool {
+// isBeginCall reports whether e calls a function that starts a transaction. A
+// getter such as txFromContext, a type conversion and a call through a function
+// value do not, since none of them hands the caller a transaction to roll back.
+func isBeginCall(info *types.Info, e ast.Expr) bool {
 	if e == nil {
 		return false
 	}
-	_, ok := ast.Unparen(e).(*ast.CallExpr)
-	return ok
+	call, ok := ast.Unparen(e).(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	fn := callee.Func(info, call)
+	if fn == nil {
+		return false
+	}
+	name := strings.ToLower(fn.Name())
+	return slices.ContainsFunc(beginPrefixes, func(prefix string) bool {
+		return strings.HasPrefix(name, prefix)
+	})
 }
 
 func isTrackedVar(info *types.Info, id *ast.Ident) bool {
@@ -200,6 +205,48 @@ func markRollbacks(info *types.Info, deferred *ast.CallExpr, into map[types.Obje
 	if lit, ok := ast.Unparen(deferred.Fun).(*ast.FuncLit); ok {
 		root = lit.Body
 	}
+	markRollbacksIn(info, root, into)
+}
+
+// handedOffRollbacks marks variables whose Rollback is handed to code that runs
+// later: called inside any function literal (t.Cleanup(func() { tx.Rollback() })),
+// or passed on as a method value (return tx.Commit, tx.Rollback, nil).
+func handedOffRollbacks(info *types.Info, body *ast.BlockStmt, into map[types.Object]bool) {
+	called := make(map[ast.Expr]bool)
+	ast.Inspect(body, func(n ast.Node) bool {
+		switch node := n.(type) {
+		case *ast.CallExpr:
+			called[ast.Unparen(node.Fun)] = true
+		case *ast.FuncLit:
+			markRollbacksIn(info, node.Body, into)
+		case *ast.SelectorExpr:
+			if obj := rollbackValueReceiver(info, node); obj != nil && !called[node] {
+				into[obj] = true
+			}
+		}
+		return true
+	})
+}
+
+// rollbackValueReceiver returns the variable whose Rollback method sel selects,
+// or nil when sel is anything else.
+func rollbackValueReceiver(info *types.Info, sel *ast.SelectorExpr) types.Object {
+	fn, ok := info.ObjectOf(sel.Sel).(*types.Func)
+	if !ok || fn.Name() != "Rollback" {
+		return nil
+	}
+	sig, ok := fn.Type().(*types.Signature)
+	if !ok || sig.Recv() == nil || !isTrackedType(sig.Recv().Type()) {
+		return nil
+	}
+	recv, ok := ast.Unparen(sel.X).(*ast.Ident)
+	if !ok {
+		return nil
+	}
+	return info.ObjectOf(recv)
+}
+
+func markRollbacksIn(info *types.Info, root ast.Node, into map[types.Object]bool) {
 	ast.Inspect(root, func(n ast.Node) bool {
 		if call, ok := n.(*ast.CallExpr); ok {
 			if obj := rollbackReceiver(info, call); obj != nil {
