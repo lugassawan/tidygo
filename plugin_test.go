@@ -100,6 +100,28 @@ func TestBuildAnalyzersIncludesIfinitonly(t *testing.T) {
 	t.Fatal("BuildAnalyzers() has no ifinitonly analyzer")
 }
 
+func TestBuildAnalyzersIncludesHygieneAnalyzers(t *testing.T) {
+	p, err := newPlugin(nil)
+	if err != nil {
+		t.Fatalf("newPlugin() error = %v", err)
+	}
+	analyzers, err := p.BuildAnalyzers()
+	if err != nil {
+		t.Fatalf("BuildAnalyzers() error = %v", err)
+	}
+	registered := make(map[string]bool, len(analyzers))
+	for _, a := range analyzers {
+		registered[a.Name] = true
+	}
+	for _, name := range []string{"constcond"} {
+		t.Run(name, func(t *testing.T) {
+			if !registered[name] {
+				t.Fatalf("BuildAnalyzers() has no %s analyzer", name)
+			}
+		})
+	}
+}
+
 func TestNewPluginPropagatesDecodeError(t *testing.T) {
 	if _, err := newPlugin(map[string]any{"bogus": true}); err == nil {
 		t.Fatal("newPlugin() error = nil, want error for unknown setting")

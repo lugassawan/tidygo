@@ -5,6 +5,7 @@ import (
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/lugassawan/tidygo/constcond"
 	"github.com/lugassawan/tidygo/funcname"
 	"github.com/lugassawan/tidygo/ifacename"
 	"github.com/lugassawan/tidygo/ifinitonly"
@@ -46,6 +47,7 @@ type plugin struct {
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return []*analysis.Analyzer{
+		constcond.Analyzer,
 		funcname.Analyzer,
 		p.ifacename,
 		ifinitonly.Analyzer,
