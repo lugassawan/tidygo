@@ -18,6 +18,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 |---|---|
 | `funcname` | Forbids underscores in function and method names |
 | `ifacename` | Requires single-method interfaces to be named after their method plus an agent-noun suffix (`Read` → `Reader`) |
+| `ifinitonly` | Forbids `if` init variables used only in the condition |
 | `maxparams` | Forbids functions with more than 7 parameters |
 | `nolateconst` | Forbids `const`/`var` declarations after function declarations |
 | `nolateexport` | Forbids exported functions after unexported functions, and exported methods after unexported methods of the same type |

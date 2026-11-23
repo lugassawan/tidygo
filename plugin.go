@@ -7,6 +7,7 @@ import (
 
 	"github.com/lugassawan/tidygo/funcname"
 	"github.com/lugassawan/tidygo/ifacename"
+	"github.com/lugassawan/tidygo/ifinitonly"
 	"github.com/lugassawan/tidygo/maxparams"
 	"github.com/lugassawan/tidygo/nolateconst"
 	"github.com/lugassawan/tidygo/nolateexport"
@@ -47,6 +48,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return []*analysis.Analyzer{
 		funcname.Analyzer,
 		p.ifacename,
+		ifinitonly.Analyzer,
 		maxparams.Analyzer,
 		nolateconst.Analyzer,
 		p.nolateexport,
