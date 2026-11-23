@@ -160,6 +160,7 @@ func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
 		"ifinitonly",
 		"maxboolops",
 		"nonestedswitch",
+		"redundantparen",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if !registered[name] {
