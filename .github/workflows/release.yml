@@ -16,25 +16,16 @@ jobs:
         with:
           fetch-depth: 0
       - name: Generate release notes
-        id: notes
         run: |
           PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${GITHUB_REF_NAME}$" | head -n1)
           if [ -z "$PREV_TAG" ]; then
-            RANGE="HEAD"
+            RANGE="${GITHUB_REF_NAME}"
           else
-            RANGE="${PREV_TAG}..HEAD"
+            RANGE="${PREV_TAG}..${GITHUB_REF_NAME}"
           fi
-          NOTES=$(git log "$RANGE" --pretty=format:"- %s" | grep -E "^- (feat|fix|refactor)" || true)
-          if [ -z "$NOTES" ]; then
-            NOTES="- Maintenance release"
-          fi
-          {
-            echo "notes<<EOF"
-            echo "$NOTES"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          .github/scripts/release-notes.sh "$RANGE" > release_notes.md
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ github.ref_name }}
-        run: gh release create "$TAG_NAME" --notes "${{ steps.notes.outputs.notes }}"
+        run: gh release create "$TAG_NAME" --notes-file release_notes.md

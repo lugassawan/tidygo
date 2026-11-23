@@ -1,5 +1,6 @@
 // Package nolocalstruct defines an analyzer that forbids named struct type
 // declarations inside function bodies. Structs should be declared at package level.
+// Config.AllTypes extends the rule to every named type declared in a function.
 package nolocalstruct
 
 import (
@@ -11,66 +12,75 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-// Analyzer reports named struct types declared inside function bodies.
-var Analyzer = &analysis.Analyzer{
-	Name:     "nolocalstruct",
-	Doc:      "forbids named struct type declarations inside function bodies",
-	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run:      run,
+const (
+	// structMessage is kept byte-identical across releases so existing nolint
+	// directives and exclusion rules keep matching.
+	structMessage = "named struct type %q should be declared at package level, not inside a function"
+	typeMessage   = "named type %q should be declared at package level, not inside a function"
+)
+
+// Config controls the optional behaviour of the analyzer.
+type Config struct {
+	// AllTypes also reports local interfaces, defined types and generic types,
+	// not just structs. Aliases are still skipped unless they alias a struct.
+	AllTypes bool
 }
 
-func run(pass *analysis.Pass) (any, error) {
+// Analyzer reports named struct types declared inside function bodies.
+var Analyzer = New(Config{})
+
+// New builds a nolocalstruct analyzer with the given configuration.
+func New(cfg Config) *analysis.Analyzer {
+	return &analysis.Analyzer{
+		Name:     "nolocalstruct",
+		Doc:      "forbids named struct type declarations inside function bodies",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run: func(pass *analysis.Pass) (any, error) {
+			return run(pass, cfg)
+		},
+	}
+}
+
+func run(pass *analysis.Pass, cfg Config) (any, error) {
 	insp, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	if !ok {
 		return nil, nil //nolint:nilnil // analysis framework guarantees type
 	}
 
-	// Visit function declarations and function literals.
-	nodeFilter := []ast.Node{
-		(*ast.FuncDecl)(nil),
-		(*ast.FuncLit)(nil),
-	}
+	// A DeclStmt only occurs inside a function body, so filtering on it visits
+	// every local declaration exactly once, including those in nested literals.
+	nodeFilter := []ast.Node{(*ast.DeclStmt)(nil)}
 
 	insp.Preorder(nodeFilter, func(n ast.Node) {
-		var body *ast.BlockStmt
-		switch fn := n.(type) {
-		case *ast.FuncDecl:
-			body = fn.Body
-		case *ast.FuncLit:
-			body = fn.Body
-		}
-		if body == nil {
-			return
-		}
-		checkBlock(pass, body)
-	})
-
-	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
-}
-
-func checkBlock(pass *analysis.Pass, block *ast.BlockStmt) {
-	ast.Inspect(block, func(n ast.Node) bool {
 		ds, ok := n.(*ast.DeclStmt)
 		if !ok {
-			return true
+			return
 		}
 		gd, ok := ds.Decl.(*ast.GenDecl)
 		if !ok || gd.Tok != token.TYPE {
-			return true
+			return
 		}
 		for _, spec := range gd.Specs {
 			ts, ok := spec.(*ast.TypeSpec)
 			if !ok {
 				continue
 			}
-			if _, isStruct := ts.Type.(*ast.StructType); isStruct {
-				pass.Reportf(
-					ts.Pos(),
-					"named struct type %q should be declared at package level, not inside a function",
-					ts.Name.Name,
-				)
+			if msg, report := messageFor(ts, cfg); report {
+				pass.Reportf(ts.Pos(), msg, ts.Name.Name)
 			}
 		}
-		return true
 	})
+
+	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
+}
+
+// messageFor returns the diagnostic format for a local type spec and whether to report it.
+func messageFor(ts *ast.TypeSpec, cfg Config) (string, bool) {
+	if _, isStruct := ts.Type.(*ast.StructType); isStruct {
+		return structMessage, true
+	}
+	if !cfg.AllTypes || ts.Assign.IsValid() {
+		return "", false
+	}
+	return typeMessage, true
 }
