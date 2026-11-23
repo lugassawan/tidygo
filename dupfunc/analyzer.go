@@ -185,9 +185,7 @@ func funcName(fd *ast.FuncDecl) string {
 		return fd.Name.Name
 	}
 	recv := receiver.TypeName(fd.Recv.List[0].Type)
-	// A receiver the parser accepts but the type checker would reject (a
-	// qualified pkg.T) has no local type name; fall back to the bare name
-	// instead of rendering ".name".
+	// A qualified pkg.T receiver has no local type name; use the bare name, not ".name".
 	if recv == "" {
 		return fd.Name.Name
 	}
