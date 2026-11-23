@@ -8,6 +8,7 @@ import (
 	"github.com/lugassawan/tidygo/confusingop"
 	"github.com/lugassawan/tidygo/constcond"
 	"github.com/lugassawan/tidygo/emptycomment"
+	"github.com/lugassawan/tidygo/emptyfunc"
 	"github.com/lugassawan/tidygo/funcname"
 	"github.com/lugassawan/tidygo/ifacename"
 	"github.com/lugassawan/tidygo/ifinitonly"
@@ -52,6 +53,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		confusingop.Analyzer,
 		constcond.Analyzer,
 		emptycomment.Analyzer,
+		emptyfunc.Analyzer,
 		funcname.Analyzer,
 		p.ifacename,
 		ifinitonly.Analyzer,
