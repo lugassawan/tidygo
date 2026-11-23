@@ -221,6 +221,7 @@ func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
 		registered[a.Name] = true
 	}
 	for _, name := range []string{
+		"aeadcipher",
 		"atomiccreate",
 		"busywait",
 		"confusingop",
@@ -230,11 +231,13 @@ func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
 		"emptycomment",
 		"emptyfunc",
 		"ifinitonly",
+		"jwtnone",
 		"maxboolops",
 		"methodcolocation",
 		"nonestedswitch",
 		"redundantparen",
 		"txrollback",
+		"weakpwhash",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if !registered[name] {

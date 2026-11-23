@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/lugassawan/tidygo)](https://github.com/lugassawan/tidygo/releases)
 
-A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code ordering, structural conventions and a few resource-handling bugs in Go source files.
+A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code ordering, structural conventions, a few resource-handling bugs and a few crypto misuses in Go source files.
 
 </div>
 
@@ -16,6 +16,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 
 | Analyzer | Description |
 |---|---|
+| `aeadcipher` | Reports unauthenticated cipher modes for encryption (`cipher.NewCBCEncrypter`, `cipher.NewCTR`); use an AEAD such as GCM |
 | `atomiccreate` | Reports `os.Create`, `os.WriteFile` and non-exclusive `os.OpenFile` calls guarded by an `os.Stat` not-exist check (use `O_CREATE\|O_EXCL`) |
 | `busywait` | Forbids empty or sleep-only `for` loops that spin on a plain variable |
 | `confusingop` | Reports `=+`, `=-`, `=!` and `=^` assignments that look like typos for `+=`, `-=`, `!=` and `^=` |
@@ -28,6 +29,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `funcname` | Forbids underscores in function and method names (optionally variables, constants, parameters, results and receivers) |
 | `ifacename` | Requires single-method interfaces to be named after their method plus an agent-noun suffix (`Read` → `Reader`) |
 | `ifinitonly` | Forbids `if` init variables used only in the condition |
+| `jwtnone` | Reports use of the JWT `none` algorithm (`SigningMethodNone`, `UnsafeAllowNoneSignatureType`) in golang-jwt (v3, v4, v5), dgrijalva/jwt-go and form3tech-oss/jwt-go |
 | `maxboolops` | Forbids boolean expressions with more than 3 `&&` and `\|\|` operators (configurable) |
 | `maxcaselines` | Forbids `case` clause bodies that span more than 10 lines (configurable) |
 | `maxcases` | Forbids `switch`, type switch and `select` statements with more than 30 case clauses (configurable) |
@@ -40,6 +42,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `nonestedswitch` | Forbids a `switch` or type switch nested inside another `switch` or type switch |
 | `redundantparen` | Forbids unnecessary parentheses around return values, assignment right-hand sides and call arguments |
 | `txrollback` | Requires a `*sql.Tx` to have a `defer tx.Rollback()` in the function that begins it |
+| `weakpwhash` | Reports password hashing (pbkdf2, scrypt, argon2, bcrypt) with a constant salt or a constant cost below a conservative floor |
 
 ## Installation
 
