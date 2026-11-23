@@ -1,7 +1,8 @@
 // Package dupfunc defines an analyzer that reports functions whose bodies are
 // identical to an earlier function in the same package. Only bodies of at
 // least DefaultMinStmts top-level statements are compared, test files and
-// generated files are skipped, and function literals are ignored.
+// generated files are skipped, and function literals and init functions are
+// ignored.
 //
 // Bodies are compared structurally: positions, comments and layout are
 // ignored, but identifier names, literals and operators must match exactly, so
@@ -74,7 +75,7 @@ func collect(pass *analysis.Pass) []candidate {
 		}
 		for _, d := range f.Decls {
 			fd, ok := d.(*ast.FuncDecl)
-			if !ok || fd.Body == nil || len(fd.Body.List) < DefaultMinStmts {
+			if !ok || fd.Body == nil || len(fd.Body.List) < DefaultMinStmts || isInit(fd) {
 				continue
 			}
 			out = append(out, candidate{decl: fd, pos: pass.Fset.Position(fd.Pos())})
@@ -83,15 +84,25 @@ func collect(pass *analysis.Pass) []candidate {
 	return out
 }
 
+// isInit reports whether fd is a package-level init function. A package may
+// declare several, and they cannot be merged by calling one from another.
+func isInit(fd *ast.FuncDecl) bool {
+	return fd.Recv == nil && fd.Name.Name == "init"
+}
+
 // bodyKey serialises the shape of body: node kinds, identifier names, literal
 // values and operator tokens. A nil node from ast.Inspect closes its parent,
 // so the string encodes the tree structure and not just the node sequence.
 func bodyKey(body *ast.BlockStmt) string {
 	var b strings.Builder
 	ast.Inspect(body, func(n ast.Node) bool {
-		if n == nil {
+		switch n.(type) {
+		case nil:
 			b.WriteByte(')')
 			return true
+		case *ast.CommentGroup, *ast.Comment:
+			// Walk reaches the Doc and Comment fields of local declarations and fields.
+			return false
 		}
 		fmt.Fprintf(&b, "(%T", n)
 		writeDetail(&b, n)
@@ -114,7 +125,13 @@ func writeDetail(b *strings.Builder, n ast.Node) {
 	case *ast.UnaryExpr:
 		fmt.Fprintf(b, " %s", x.Op)
 	case *ast.AssignStmt:
-		fmt.Fprintf(b, " %s", x.Tok)
+		// The left-hand count tells `a, b, c = f()` from `a, b = c, f()`.
+		fmt.Fprintf(b, " %s %d", x.Tok, len(x.Lhs))
+	case *ast.ForStmt:
+		// `for i++; ; {}` and `for ; ; i++ {}` walk the same children.
+		fmt.Fprintf(b, " %t %t %t", x.Init != nil, x.Cond != nil, x.Post != nil)
+	case *ast.ValueSpec:
+		fmt.Fprintf(b, " %d %t", len(x.Names), x.Type != nil)
 	case *ast.IncDecStmt:
 		fmt.Fprintf(b, " %s", x.Tok)
 	case *ast.BranchStmt:

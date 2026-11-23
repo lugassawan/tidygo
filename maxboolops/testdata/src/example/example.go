@@ -77,3 +77,23 @@ func literal(a, b bool) flags {
 func plain(a bool) bool {
 	return a
 }
+
+// Reported once at the root: the left-nested sub-chains are not separate findings.
+func deepChain(a, b, c, d, e, f bool) bool {
+	return a && b && c && d && e && f // want `boolean expression has 5 && / \|\| operators, max is 3`
+}
+
+// Reported once at the root: the parenthesised sub-chain exceeds the limit but is not its own root.
+func parenOperand(a, b, c, d, e bool) bool {
+	return a || (b && c && d && e) || a // want `boolean expression has 5 && / \|\| operators, max is 3`
+}
+
+// Reported once at the root: the negated sub-chain exceeds the limit but is not its own root.
+func notOperand(a, b, c, d, e bool) bool {
+	return !(a && b && c && d && e) || a // want `boolean expression has 5 && / \|\| operators, max is 3`
+}
+
+// Reported: a chain under a non-boolean binary operator is its own root.
+func underComparison(a, b, c, d, e, f bool) bool {
+	return (a && b && c && d && e) == f // want `boolean expression has 4 && / \|\| operators, max is 3`
+}

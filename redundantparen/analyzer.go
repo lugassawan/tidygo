@@ -1,7 +1,8 @@
 // Package redundantparen defines an analyzer that reports unnecessary
-// parentheses around a whole return value, assignment or declaration
-// right-hand side, or call argument. Parentheses inside binary operands are
-// left alone because they often clarify mixed operators.
+// parentheses: doubled parentheses such as ((x)), and parentheses around a
+// whole return value, assignment or declaration right-hand side, or call
+// argument. Other parentheses inside binary operands are left alone because
+// they often clarify mixed operators.
 package redundantparen
 
 import (
@@ -35,9 +36,12 @@ func run(pass *analysis.Pass) (any, error) {
 		if !push || !ok || len(stack) < 2 {
 			return true
 		}
-		// Only the outer pair of an unformatted ((x)) sits in operand position,
-		// so it alone is reported. gofmt collapses doubled parentheses anyway.
-		if isRedundant(paren, stack[len(stack)-2], stack) {
+		parent := stack[len(stack)-2]
+		// The outermost pair of a nested group carries the report.
+		if _, nested := parent.(*ast.ParenExpr); nested {
+			return true
+		}
+		if isRedundant(paren, parent, stack) {
 			pass.Reportf(paren.Pos(), "redundant parentheses")
 		}
 		return true
@@ -46,9 +50,14 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
 }
 
-// isRedundant reports whether paren is a top-level operand whose parentheses
-// can be removed without changing how the code parses.
+// isRedundant reports whether paren is doubled, or is a top-level operand
+// whose parentheses can be removed without changing how the code parses.
 func isRedundant(paren *ast.ParenExpr, parent ast.Node, stack []ast.Node) bool {
+	// Dropping one layer of ((x)) always leaves valid code. gofmt collapses
+	// doubled parentheses, so this only fires on source that is not formatted.
+	if _, doubled := paren.X.(*ast.ParenExpr); doubled {
+		return true
+	}
 	if !isOperand(parent, paren) {
 		return false
 	}

@@ -73,6 +73,38 @@ func headerPlain(a int) {
 	}
 }
 
+func keep(i item) []item { return []item{i} }
+
+func keepAny(i item) any { return i }
+
+// Not reported: a call argument in a range header keeps its parentheses.
+func headerRange(p bool) {
+	for range keep((item{ok: p})) {
+		break
+	}
+}
+
+// Not reported: same for a type switch header.
+func headerTypeSwitch(p bool) {
+	switch keepAny((item{ok: p})).(type) {
+	default:
+	}
+}
+
+// Reported: the composite literal sits inside a function literal body, which is a fresh context.
+func headerFuncLitBody(p bool) {
+	if f := func() item { x := (item{ok: p}); return x }; f().ok { // want `redundant parentheses`
+		use(f)
+	}
+}
+
+// Reported: the only composite literal is inside the function literal.
+func headerFuncLitValue(p bool) {
+	if f := (func() item { return item{ok: p} }); f().ok { // want `redundant parentheses`
+		use(f)
+	}
+}
+
 // Reported: inside the body the composite literal is unambiguous again.
 func inBody(p bool) {
 	if p {

@@ -83,7 +83,7 @@ This analyzer has no options.
 
 ### Known limitations
 
-`_test.go` files and generated files (those with a `// Code generated ... DO NOT EDIT.` header) are skipped entirely, since table-test scaffolding repeats on purpose. Function literals are never compared. Duplicates are only found within one package, and only whole bodies are compared, not repeated fragments inside different functions; the `dupl` linter covers larger token-level clones.
+`_test.go` files and generated files (those with a `// Code generated ... DO NOT EDIT.` header) are skipped entirely, since table-test scaffolding repeats on purpose. Function literals are never compared, and neither are `init` functions: a package may declare several, and one cannot call another to share a body. Duplicates are only found within one package, and only whole bodies are compared, not repeated fragments inside different functions; the `dupl` linter covers larger token-level clones.
 
 The analyzer runs without type information, so two identical bodies are reported even if their parameters or receivers have different types.
 
@@ -582,7 +582,7 @@ This analyzer has no options.
 
 ## redundantparen
 
-Reports unnecessary parentheses around a whole value in a position where they can never change the meaning: an element of a `return`, the right-hand side of an assignment or declaration (`=`, `:=`, `op=`, `var x = …`), or a call argument. Parentheses inside a binary operand, such as `(a && b) || c` or `(a + b) * c`, are never reported, because they often clarify mixed operators or change grouping.
+Reports unnecessary parentheses around a whole value in a position where they can never change the meaning: an element of a `return`, the right-hand side of an assignment or declaration (`=`, `:=`, `op=`, `var x = …`), or a call argument. Doubled parentheses such as `((x))` are reported too, once, at the outer pair. Other parentheses inside a binary operand, such as `(a && b) || c` or `(a + b) * c`, are never reported, because they often clarify mixed operators or change grouping.
 
 ```go
 // Bad
@@ -605,6 +605,6 @@ This analyzer has no options.
 
 ### Known limitations
 
-Doubled parentheses such as `((x))` are not a separate case: `gofmt` already collapses them, and the outer pair of an unformatted `return ((x))` is reported like any other whole-value parenthesis. Parentheses around a type (`var t (int)`), a struct field value or an operand of a unary or binary operator are out of scope.
+`gofmt` already collapses doubled parentheses, so the doubled-parentheses check only fires on source that has not been formatted yet; run the linter before the formatter (the same caveat as `confusingop`). Parentheses around a type (`var t (int)`), a struct field value or an operand of a unary or binary operator are out of scope.
 
 A composite literal anywhere inside a statement header keeps its parentheses, even in a call argument such as `if f((T{})) {` where they are in fact unnecessary. The analyzer errs on the side of not reporting.

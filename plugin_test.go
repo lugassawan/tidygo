@@ -109,6 +109,12 @@ func TestDecodeConfigMaxReachesConfig(t *testing.T) {
 			if v := l.get(got); v != 3 {
 				t.Errorf("decodeConfig() %s max = %d, want 3", l.key, v)
 			}
+			// Setting one limit must not leak into the others.
+			for _, other := range maxLimits {
+				if v := other.get(got); other.key != l.key && v != 0 {
+					t.Errorf("decodeConfig() %s max = %d, want 0 when only %s is set", other.key, v, l.key)
+				}
+			}
 		})
 	}
 }
