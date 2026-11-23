@@ -25,17 +25,20 @@ func run(pass *analysis.Pass) (any, error) {
 			case *ast.FuncDecl:
 				seenFunc = true
 			case *ast.GenDecl:
-				if !seenFunc {
-					continue
-				}
-				switch d.Tok {
-				case token.CONST:
-					pass.Reportf(d.TokPos, "const declaration after function declaration")
-				case token.VAR:
-					pass.Reportf(d.TokPos, "var declaration after function declaration")
+				if seenFunc {
+					reportLateGenDecl(pass, d)
 				}
 			}
 		}
 	}
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
+}
+
+func reportLateGenDecl(pass *analysis.Pass, d *ast.GenDecl) {
+	switch d.Tok {
+	case token.CONST:
+		pass.Reportf(d.TokPos, "const declaration after function declaration")
+	case token.VAR:
+		pass.Reportf(d.TokPos, "var declaration after function declaration")
+	}
 }
