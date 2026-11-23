@@ -42,6 +42,12 @@ vendor/
 # Git worktrees
 .worktrees/
 
+# Claude Code local and runtime files
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+.claude/cache/
+
 # Temporary files
 tmp/
 temp/
