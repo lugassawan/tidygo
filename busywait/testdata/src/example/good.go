@@ -110,3 +110,10 @@ func RangeLoop(ch chan int) {
 	for range ch {
 	}
 }
+
+// A constant condition waits on no state (constcond reports `for true`).
+func ConstantCondition() {
+	for true {
+		time.Sleep(time.Second)
+	}
+}

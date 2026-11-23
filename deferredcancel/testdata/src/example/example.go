@@ -21,71 +21,49 @@ func done() {}
 // ---- reported: the cancel func is not deferred on the next statement ----
 
 func lostWithCancel() {
-	ctx, cancel := context.WithCancel(
-		context.Background(),
-	) // want `cancel func from context.WithCancel should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithCancel(context.Background()) // want `WithCancel should`
 	use(ctx)
 	cancel()
 }
 
 func lostWithTimeout() {
-	ctx, cancel := context.WithTimeout(
-		context.Background(),
-		time.Second,
-	) // want `cancel func from context.WithTimeout should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second) // want `WithTimeout should`
 	use(ctx)
 	cancel()
 }
 
 func lostWithDeadline() {
-	ctx, cancel := context.WithDeadline(
-		context.Background(),
-		time.Now(),
-	) // want `cancel func from context.WithDeadline should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now()) // want `WithDeadline should`
 	use(ctx)
 	cancel()
 }
 
 func lostWithCancelCause() {
-	ctx, cancel := context.WithCancelCause(
-		context.Background(),
-	) // want `cancel func from context.WithCancelCause should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithCancelCause(context.Background()) // want `WithCancelCause should`
 	use(ctx)
 	cancel(nil)
 }
 
 func lostWithTimeoutCause() {
-	ctx, cancel := context.WithTimeoutCause(
-		context.Background(),
-		time.Second,
-		nil,
-	) // want `cancel func from context.WithTimeoutCause should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithTimeoutCause(context.Background(), time.Second, nil) // want `WithTimeoutCause should`
 	use(ctx)
 	cancel()
 }
 
 func lostWithDeadlineCause() {
-	ctx, cancel := context.WithDeadlineCause(
-		context.Background(),
-		time.Now(),
-		nil,
-	) // want `cancel func from context.WithDeadlineCause should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithDeadlineCause(context.Background(), time.Now(), nil) // want `WithDeadlineCause should`
 	use(ctx)
 	cancel()
 }
 
 func deferNotImmediate() {
-	ctx, cancel := context.WithCancel(
-		context.Background(),
-	) // want `cancel func from context.WithCancel should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithCancel(context.Background()) // want `WithCancel should`
 	use(ctx)
 	defer cancel()
 }
 
 func unrelatedDeferNext() {
-	ctx, cancel := context.WithCancel(
-		context.Background(),
-	) // want `cancel func from context.WithCancel should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithCancel(context.Background()) // want `WithCancel should`
 	defer done()
 	use(ctx)
 	cancel()
@@ -94,33 +72,24 @@ func unrelatedDeferNext() {
 func assignForm() {
 	var ctx context.Context
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(
-		context.Background(),
-	) // want `cancel func from context.WithCancel should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel = context.WithCancel(context.Background()) // want `WithCancel should`
 	use(ctx)
 	cancel()
 }
 
 func blankContext() {
-	_, cancel := context.WithCancel(
-		context.Background(),
-	) // want `cancel func from context.WithCancel should be deferred immediately: add "defer cancel\(\)"`
+	_, cancel := context.WithCancel(context.Background()) // want `WithCancel should`
 	cancel()
 }
 
 func customName() {
-	ctx, stop := context.WithCancel(
-		context.Background(),
-	) // want `cancel func from context.WithCancel should be deferred immediately: add "defer stop\(\)"`
+	ctx, stop := context.WithCancel(context.Background()) // want `WithCancel should`
 	use(ctx)
 	stop()
 }
 
 func aliasImport() {
-	ctx, cancel := stdctx.WithTimeout(
-		context.Background(),
-		time.Second,
-	) // want `cancel func from context.WithTimeout should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := stdctx.WithTimeout(context.Background(), time.Second) // want `WithTimeout should`
 	use(ctx)
 	cancel()
 }
@@ -128,9 +97,7 @@ func aliasImport() {
 func inCaseClause(n int) {
 	switch n {
 	case 1:
-		ctx, cancel := context.WithCancel(
-			context.Background(),
-		) // want `cancel func from context.WithCancel should be deferred immediately: add "defer cancel\(\)"`
+		ctx, cancel := context.WithCancel(context.Background()) // want `WithCancel should`
 		use(ctx)
 		cancel()
 	case 2:
@@ -142,9 +109,7 @@ func inCaseClause(n int) {
 
 func nestedLiteral() {
 	lost := func() {
-		ctx, cancel := context.WithCancel(
-			context.Background(),
-		) // want `cancel func from context.WithCancel should be deferred immediately: add "defer cancel\(\)"`
+		ctx, cancel := context.WithCancel(context.Background()) // want `WithCancel should`
 		use(ctx)
 		cancel()
 	}
@@ -159,9 +124,7 @@ func nestedLiteral() {
 }
 
 func outerLostInnerFine() {
-	ctx, cancel := context.WithCancel(
-		context.Background(),
-	) // want `cancel func from context.WithCancel should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithCancel(context.Background()) // want `WithCancel should`
 	func() {
 		inner, cancelInner := context.WithCancel(ctx)
 		defer cancelInner()
@@ -173,9 +136,7 @@ func outerLostInnerFine() {
 // A deferred closure whose only call targets a parameter named cancel does not
 // cancel the context function's cancel: identity, not the name, decides.
 func shadowedInDefer() {
-	ctx, cancel := context.WithCancel(
-		context.Background(),
-	) // want `cancel func from context.WithCancel should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithCancel(context.Background()) // want `WithCancel should`
 	defer func(cancel func()) { cancel() }(func() {})
 	use(ctx)
 	cancel()
@@ -183,9 +144,7 @@ func shadowedInDefer() {
 
 // Passing a different variable that happens to share the name is not an escape.
 func shadowedElsewhere() {
-	ctx, cancel := context.WithCancel(
-		context.Background(),
-	) // want `cancel func from context.WithCancel should be deferred immediately: add "defer cancel\(\)"`
+	ctx, cancel := context.WithCancel(context.Background()) // want `WithCancel should`
 	use(ctx)
 	cancel()
 	{
@@ -350,4 +309,47 @@ func escapeCapturedVariable() {
 func blankCancel() {
 	ctx, _ := context.WithCancel(context.Background())
 	use(ctx)
+}
+
+// ---- accepted: a conditional assignment deferred once after the branches ----
+
+func conditionalAssign(timeout time.Duration) {
+	var ctx context.Context
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), timeout)
+	} else {
+		ctx, cancel = context.WithCancel(context.Background())
+	}
+	defer cancel()
+	use(ctx)
+}
+
+// ---- accepted: a deferred closure that cancels alongside other work ----
+
+func deferredClosureWithOtherWork() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+		done()
+	}()
+	use(ctx)
+}
+
+// ---- accepted: a defer in a loop body would pile up, so loops are skipped ----
+
+func perIteration(n int) {
+	for i := 0; i < n; i++ {
+		ctx, cancel := context.WithCancel(context.Background())
+		use(ctx)
+		cancel()
+	}
+}
+
+// ---- reported: the Cause variant's cancel func takes the cause ----
+
+func causeSuggestion() {
+	ctx, cancel := context.WithCancelCause(context.Background()) // want `add "defer cancel\(nil\)"`
+	use(ctx)
+	cancel(nil)
 }

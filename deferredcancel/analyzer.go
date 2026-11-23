@@ -6,6 +6,7 @@ package deferredcancel
 
 import (
 	"go/ast"
+	"go/token"
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
@@ -61,11 +62,13 @@ func funcBody(n ast.Node) *ast.BlockStmt {
 }
 
 // checkFunc visits every statement list of body except those of nested function
-// literals, which are checked on their own against their own body.
+// literals, which are checked on their own against their own body, and those of
+// loops: a defer in a loop body piles up until the function returns, so the fix
+// there is a per-iteration function, not a defer.
 func checkFunc(pass *analysis.Pass, body *ast.BlockStmt) {
 	ast.Inspect(body, func(n ast.Node) bool {
 		switch n := n.(type) {
-		case *ast.FuncLit:
+		case *ast.FuncLit, *ast.ForStmt, *ast.RangeStmt:
 			return false
 		case *ast.BlockStmt:
 			checkList(pass, body, n.List)
@@ -103,10 +106,37 @@ func checkStmt(pass *analysis.Pass, body *ast.BlockStmt, stmt, next ast.Stmt) {
 	if obj == nil || isManaged(pass.TypesInfo, body, obj, next) {
 		return
 	}
+	if assign.Tok == token.ASSIGN && defersAfter(pass.TypesInfo, body, obj, assign.End()) {
+		return // `var cancel ...; if c { ctx, cancel = ... } else { ... }; defer cancel()`
+	}
 	pass.Reportf(assign.Pos(),
-		"cancel func from context.%s should be deferred immediately: add \"defer %s()\"",
-		fn, cancel.Name,
+		"cancel func from context.%s should be deferred immediately: add \"defer %s(%s)\"",
+		fn, cancel.Name, deferArg(fn),
 	)
+}
+
+// deferArg is the argument list of the suggested defer: WithCancelCause returns a
+// CancelCauseFunc, which takes the cause.
+func deferArg(fn string) string {
+	if fn == "WithCancelCause" {
+		return "nil"
+	}
+	return ""
+}
+
+// defersAfter reports whether body defers obj's cancel func at a point after pos.
+func defersAfter(info *types.Info, body *ast.BlockStmt, obj types.Object, pos token.Pos) bool {
+	found := false
+	ast.Inspect(body, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.FuncLit:
+			return false
+		case *ast.DeferStmt:
+			found = found || (n.Pos() > pos && defersCancel(info, n, obj))
+		}
+		return !found
+	})
+	return found
 }
 
 // cancelAssign matches `ctx, cancel := context.WithX(...)` (or `=`) and returns
@@ -147,30 +177,25 @@ func isManaged(info *types.Info, body *ast.BlockStmt, obj types.Object, next ast
 }
 
 // defersCancel reports whether stmt is `defer cancel(...)` or a deferred function
-// literal whose body is exactly one such call.
+// literal that calls cancel as one of its top-level statements.
 func defersCancel(info *types.Info, stmt ast.Stmt, obj types.Object) bool {
 	deferred, ok := stmt.(*ast.DeferStmt)
 	if !ok {
 		return false
 	}
-	call := deferred.Call
-	if lit, isLit := call.Fun.(*ast.FuncLit); isLit {
-		call = singleCall(lit.Body)
+	lit, isLit := deferred.Call.Fun.(*ast.FuncLit)
+	if !isLit {
+		return callsObject(info, deferred.Call, obj)
 	}
-	return callsObject(info, call, obj)
-}
-
-// singleCall returns the call when body is exactly one call statement, else nil.
-func singleCall(body *ast.BlockStmt) *ast.CallExpr {
-	if len(body.List) != 1 {
-		return nil
+	for _, s := range lit.Body.List {
+		if es, ok := s.(*ast.ExprStmt); ok {
+			call, _ := es.X.(*ast.CallExpr)
+			if callsObject(info, call, obj) {
+				return true
+			}
+		}
 	}
-	stmt, ok := body.List[0].(*ast.ExprStmt)
-	if !ok {
-		return nil
-	}
-	call, _ := stmt.X.(*ast.CallExpr)
-	return call
+	return false
 }
 
 func callsObject(info *types.Info, call *ast.CallExpr, obj types.Object) bool {

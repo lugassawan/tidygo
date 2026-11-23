@@ -104,3 +104,19 @@ func fieldTarget(db *sql.DB, s *store) error {
 	s.tx, err = db.Begin()
 	return err
 }
+
+// A closure that assigns a transaction declared by its enclosing function leaves
+// the rollback to that function.
+func outerManagesTx(ctx context.Context, db *sql.DB) error {
+	var tx *sql.Tx
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	begin := func() (err error) {
+		tx, err = db.BeginTx(ctx, nil)
+		return err
+	}
+	return begin()
+}

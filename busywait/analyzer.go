@@ -47,6 +47,7 @@ func isBusyWait(info *types.Info, loop *ast.ForStmt) bool {
 	return loop.Cond != nil &&
 		loop.Init == nil &&
 		loop.Post == nil &&
+		info.Types[loop.Cond].Value == nil && // `for true` waits on no state; constcond covers it
 		isPlainState(loop.Cond) &&
 		isSpinBody(info, loop.Body)
 }
@@ -107,16 +108,19 @@ func isYield(info *types.Info, stmt ast.Stmt) bool {
 	case callee.IsFunc(info, call, "runtime", "Gosched"):
 		return true
 	case callee.IsFunc(info, call, "time", "Sleep"):
-		return len(call.Args) == 1 && !containsCall(call.Args[0])
+		return len(call.Args) == 1 && !containsCall(info, call.Args[0])
 	}
 	return false
 }
 
-func containsCall(expr ast.Expr) bool {
+// containsCall reports whether expr calls a function. Type conversions
+// (time.Duration(n)) and builtins (len(q)) run no user code, so they do not count.
+func containsCall(info *types.Info, expr ast.Expr) bool {
 	found := false
 	ast.Inspect(expr, func(n ast.Node) bool {
-		if _, ok := n.(*ast.CallExpr); ok {
-			found = true
+		if call, ok := n.(*ast.CallExpr); ok {
+			tv := info.Types[call.Fun]
+			found = found || (!tv.IsType() && !tv.IsBuiltin())
 		}
 		return !found
 	})

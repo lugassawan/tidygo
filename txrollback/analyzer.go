@@ -76,8 +76,8 @@ func checkFunc(pass *analysis.Pass, ftype *ast.FuncType, body *ast.BlockStmt) {
 
 	for _, id := range begins {
 		obj := info.ObjectOf(id)
-		if rolledBack[obj] || escaped[obj] {
-			continue
+		if rolledBack[obj] || escaped[obj] || declaredOutside(obj, body) {
+			continue // a transaction declared by an enclosing function is managed there
 		}
 		pass.Reportf(
 			id.Pos(),
@@ -85,6 +85,12 @@ func checkFunc(pass *analysis.Pass, ftype *ast.FuncType, body *ast.BlockStmt) {
 			id.Name,
 		)
 	}
+}
+
+// declaredOutside reports whether obj is declared outside body, as when a closure
+// assigns a transaction variable of its enclosing function.
+func declaredOutside(obj types.Object, body *ast.BlockStmt) bool {
+	return obj == nil || obj.Pos() < body.Pos() || obj.Pos() >= body.End()
 }
 
 // collectBegins returns the identifiers in body that receive a tracked

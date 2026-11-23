@@ -21,9 +21,7 @@ func touch() {}
 
 func initForm(p string) {
 	if _, err := os.Stat(p); os.IsNotExist(err) {
-		_, _ = os.Create(
-			p,
-		) // want `os\.Create after os\.Stat existence check is racy; use os\.OpenFile with O_CREATE\|O_EXCL`
+		_, _ = os.Create(p) // want `os\.Create after os\.Stat`
 	}
 }
 
@@ -55,21 +53,13 @@ func lstat(p string) {
 
 func writeFile(p string, data []byte) {
 	if _, err := os.Stat(p); os.IsNotExist(err) {
-		_ = os.WriteFile(
-			p,
-			data,
-			perm,
-		) // want `os\.WriteFile after os\.Stat existence check is racy; use os\.OpenFile with O_CREATE\|O_EXCL`
+		_ = os.WriteFile(p, data, perm) // want `os\.WriteFile after os\.Stat`
 	}
 }
 
 func openFileCreate(p string) {
 	if _, err := os.Stat(p); os.IsNotExist(err) {
-		_, _ = os.OpenFile(
-			p,
-			os.O_CREATE|os.O_WRONLY,
-			0o644,
-		) // want `os\.OpenFile after os\.Stat existence check is racy; use os\.OpenFile with O_CREATE\|O_EXCL`
+		_, _ = os.OpenFile(p, os.O_CREATE|os.O_WRONLY, 0o644) // want `os\.OpenFile after os\.Stat`
 	}
 }
 

@@ -43,3 +43,10 @@ func InsideClosure() {
 		}
 	}()
 }
+
+// A conversion runs no user code, so it does not exempt the sleep argument.
+func ConvertedSleep(n int) {
+	for !done { // want `loop busy-waits on !done`
+		time.Sleep(time.Duration(n) * time.Millisecond)
+	}
+}

@@ -6,7 +6,7 @@ import (
 )
 
 func commitOnly(db *sql.DB) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back on every path: add "defer tx.Rollback\(\)" after Begin`
+	tx, err := db.Begin() // want `transaction tx is not rolled back`
 	if err != nil {
 		return err
 	}
@@ -17,7 +17,7 @@ func commitOnly(db *sql.DB) error {
 }
 
 func manualRollbackOnly(db *sql.DB) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back on every path: add "defer tx.Rollback\(\)" after Begin`
+	tx, err := db.Begin() // want `transaction tx is not rolled back`
 	if err != nil {
 		return err
 	}
@@ -29,10 +29,7 @@ func manualRollbackOnly(db *sql.DB) error {
 }
 
 func beginTx(ctx context.Context, db *sql.DB) error {
-	tx, err := db.BeginTx(
-		ctx,
-		nil,
-	) // want `transaction tx is not rolled back on every path: add "defer tx.Rollback\(\)" after Begin`
+	tx, err := db.BeginTx(ctx, nil) // want `transaction tx is not rolled back`
 	if err != nil {
 		return err
 	}
@@ -40,10 +37,7 @@ func beginTx(ctx context.Context, db *sql.DB) error {
 }
 
 func connBeginTx(ctx context.Context, conn *sql.Conn) error {
-	t, err := conn.BeginTx(
-		ctx,
-		&sql.TxOptions{},
-	) // want `transaction t is not rolled back on every path: add "defer t.Rollback\(\)" after Begin`
+	t, err := conn.BeginTx(ctx, &sql.TxOptions{}) // want `transaction t is not rolled back`
 	if err != nil {
 		return err
 	}
@@ -51,7 +45,7 @@ func connBeginTx(ctx context.Context, conn *sql.Conn) error {
 }
 
 func valueSpec(db *sql.DB) error {
-	var tx, err = db.Begin() // want `transaction tx is not rolled back on every path: add "defer tx.Rollback\(\)" after Begin`
+	var tx, err = db.Begin() // want `transaction tx is not rolled back`
 	if err != nil {
 		return err
 	}
@@ -61,7 +55,7 @@ func valueSpec(db *sql.DB) error {
 func plainAssign(db *sql.DB) error {
 	var tx *sql.Tx
 	var err error
-	tx, err = db.Begin() // want `transaction tx is not rolled back on every path: add "defer tx.Rollback\(\)" after Begin`
+	tx, err = db.Begin() // want `transaction tx is not rolled back`
 	if err != nil {
 		return err
 	}
@@ -69,9 +63,7 @@ func plainAssign(db *sql.DB) error {
 }
 
 func viaWrapper(db *sql.DB) error {
-	tx, err := begin(
-		db,
-	) // want `transaction tx is not rolled back on every path: add "defer tx.Rollback\(\)" after Begin`
+	tx, err := begin(db) // want `transaction tx is not rolled back`
 	if err != nil {
 		return err
 	}
@@ -85,7 +77,7 @@ func secondTxUnprotected(db *sql.DB) error {
 	}
 	defer a.Rollback()
 
-	b, err := db.Begin() // want `transaction b is not rolled back on every path: add "defer b.Rollback\(\)" after Begin`
+	b, err := db.Begin() // want `transaction b is not rolled back`
 	if err != nil {
 		return err
 	}
@@ -103,7 +95,7 @@ func nestedClosureBeginsOwnTx(db *sql.DB) error {
 	defer tx.Rollback()
 
 	run := func() error {
-		inner, err := db.Begin() // want `transaction inner is not rolled back on every path: add "defer inner.Rollback\(\)" after Begin`
+		inner, err := db.Begin() // want `transaction inner is not rolled back`
 		if err != nil {
 			return err
 		}
@@ -116,7 +108,7 @@ func nestedClosureBeginsOwnTx(db *sql.DB) error {
 }
 
 func rollbackInNestedClosureNotCounted(db *sql.DB) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back on every path: add "defer tx.Rollback\(\)" after Begin`
+	tx, err := db.Begin() // want `transaction tx is not rolled back`
 	if err != nil {
 		return err
 	}
@@ -135,7 +127,7 @@ func shadowedInnerUnprotected(db *sql.DB, cond bool) error {
 	defer tx.Rollback()
 
 	if cond {
-		tx, err := db.Begin() // want `transaction tx is not rolled back on every path: add "defer tx.Rollback\(\)" after Begin`
+		tx, err := db.Begin() // want `transaction tx is not rolled back`
 		if err != nil {
 			return err
 		}
@@ -145,7 +137,7 @@ func shadowedInnerUnprotected(db *sql.DB, cond bool) error {
 }
 
 func shadowedOuterUnprotected(db *sql.DB, cond bool) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back on every path: add "defer tx.Rollback\(\)" after Begin`
+	tx, err := db.Begin() // want `transaction tx is not rolled back`
 	if err != nil {
 		return err
 	}
@@ -159,7 +151,7 @@ func shadowedOuterUnprotected(db *sql.DB, cond bool) error {
 }
 
 var literal = func(db *sql.DB) error {
-	tx, err := db.Begin() // want `transaction tx is not rolled back on every path: add "defer tx.Rollback\(\)" after Begin`
+	tx, err := db.Begin() // want `transaction tx is not rolled back`
 	if err != nil {
 		return err
 	}

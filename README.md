@@ -29,7 +29,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `maxcaselines` | Forbids `case` clause bodies that span more than 10 lines (configurable) |
 | `maxcases` | Forbids `switch`, type switch and `select` statements with more than 30 case clauses (configurable) |
 | `maxparams` | Forbids functions with more than 7 parameters |
-| `methodcolocation` | Requires a method to be declared in the same file as its receiver type (optionally allowing `<type>_*.go` files) |
+| `methodcolocation` | Requires a method to be declared in the same file as its receiver type (optionally allowing `<file>_*.go` siblings of the type's file) |
 | `noanonnested` | Forbids more than 1 level of anonymous struct nesting; a named struct type does not count (configurable) |
 | `nolateconst` | Forbids `const`/`var` declarations after function declarations |
 | `nolateexport` | Forbids exported functions after unexported functions, and exported methods after unexported methods of the same type |
@@ -89,6 +89,8 @@ linters:
           nolocalstruct:
             all-types: true
 ```
+
+tidygo loads packages with type information, so golangci-lint skips every tidygo analyzer on a package that does not type-check.
 
 Build and run:
 

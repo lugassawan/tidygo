@@ -15,11 +15,11 @@ import (
 	"go/constant"
 	"go/token"
 	"go/types"
-	"os"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+	"golang.org/x/tools/go/types/typeutil"
 
 	"github.com/lugassawan/tidygo/internal/callee"
 )
@@ -278,7 +278,24 @@ func (c *checker) createsNonExclusively(call *ast.CallExpr) bool {
 		return false
 	}
 	flag, exact := constant.Int64Val(tv.Value)
-	return exact && flag&int64(os.O_CREATE) != 0 && flag&int64(os.O_EXCL) == 0
+	create, okCreate := c.osConst(call, "O_CREATE")
+	excl, okExcl := c.osConst(call, "O_EXCL")
+	return exact && okCreate && okExcl && flag&create != 0 && flag&excl == 0
+}
+
+// osConst reads an integer constant of the os package the call was type-checked
+// against. The values differ per GOOS, so they are taken from the analyzed code's
+// view of os rather than from the platform the linter itself runs on.
+func (c *checker) osConst(call *ast.CallExpr, name string) (int64, bool) {
+	fn, _ := typeutil.Callee(c.info, call).(*types.Func)
+	if fn == nil || fn.Pkg() == nil {
+		return 0, false
+	}
+	k, ok := fn.Pkg().Scope().Lookup(name).(*types.Const)
+	if !ok {
+		return 0, false
+	}
+	return constant.Int64Val(constant.ToInt(k.Val()))
 }
 
 // samePath reports whether a and b denote the same path between from and to.

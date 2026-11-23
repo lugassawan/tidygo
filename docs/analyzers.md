@@ -25,7 +25,8 @@ if errors.Is(err, fs.ErrExist) {
 ### Known limitations
 
 - A non-constant `os.OpenFile` flag is skipped, because the analyzer cannot tell whether `O_EXCL` is set.
-- Negated checks (`!os.IsNotExist(err)`) and creates in an `else` branch are not reported.
+- Negated checks (`!os.IsNotExist(err)`) and creates in the `else` branch of the check are not reported. An `else if os.IsNotExist(err)` is checked like any other `if`.
+- `os.OpenFile` with `O_CREATE` but not `O_EXCL` is reported whatever else it sets (`O_APPEND`, `O_TRUNC`).
 - Helpers are not followed: a stat in one function and the create in another, or a path built twice (`filepath.Join(dir, name)` in both calls), is not matched.
 - Creates inside a nested function literal are not attributed to the enclosing check.
 
@@ -33,7 +34,7 @@ if errors.Is(err, fs.ErrExist) {
 
 Forbids a `for` loop that spins on a plain variable: the body is empty, or is only `time.Sleep(...)` or `runtime.Gosched()`. Reading a variable that another goroutine writes, without synchronisation, is a data race, and the loop burns CPU (or polls on a timer) while it waits. Use a channel, `sync.Cond`, `sync.WaitGroup` or `context` instead.
 
-The analyzer needs type information to recognise `time.Sleep` and `runtime.Gosched`. The loop must have a condition and no init or post statement. The condition must be built only from identifiers, selectors, parentheses, `!`, comparisons, `&&`/`||` and constants. Any call, channel receive or index expression in the condition makes the loop exempt, which keeps polling idioms such as `atomic.Load*`, `ctx.Err()`, `time.Now().Before(d)` and `len(q)` out of scope. A bare `for {}` has no condition and is covered by staticcheck SA5002.
+The analyzer needs type information to recognise `time.Sleep` and `runtime.Gosched`. The loop must have a condition and no init or post statement. The condition must be built only from identifiers, selectors, parentheses, unary `!`/`-`/`+`, comparisons, `&&`/`||` and constants. Arithmetic (`x+1 < y`) and pointer dereferences (`*p`) are outside that set, so such loops are not reported. A condition that is a constant (`for true`) waits on no state and is not reported. Any function or method call, channel receive or index expression in the condition makes the loop exempt (type conversions and builtins do not count as calls, so `time.Sleep(time.Duration(n) * time.Millisecond)` is still a spin), which keeps polling idioms such as `atomic.Load*`, `ctx.Err()`, `time.Now().Before(d)` and `len(q)` out of scope. A bare `for {}` has no condition and is covered by staticcheck SA5002.
 
 ```go
 // Bad
@@ -104,13 +105,13 @@ for { run() }
 
 ### Known limitations
 
-The plugin runs in syntax-only mode, so the check matches the identifier name only. A local variable that shadows `true` or `false` is still reported; enable the `predeclared` linter to catch such shadowing. Expressions that merely evaluate to a constant (`!true`, `true && x`, a named constant) are not detected.
+This analyzer uses no type information, so it matches the identifier name only. A local variable that shadows `true` or `false` is still reported; enable the `predeclared` linter to catch such shadowing. Expressions that merely evaluate to a constant (`!true`, `true && x`, a named constant) are not detected.
 
 ## deferredcancel
 
 Requires the cancel function returned by `context.WithCancel`, `WithTimeout`, `WithDeadline` (and the `...Cause` variants) to be deferred on the very next statement. Deferring it straight away guarantees the context's resources are released on every return path, including panics and early returns added later.
 
-The analyzer needs type information, so aliased imports and shadowed names are handled. It accepts `defer cancel()`, `defer cancel(err)` for the `Cause` variants, and `defer func() { cancel() }()` whose body is that single call.
+The analyzer needs type information, so aliased imports and shadowed names are handled. It accepts `defer cancel()`, `defer cancel(nil)` for `WithCancelCause`, and a deferred function literal that calls `cancel()` as one of its top-level statements (`defer func() { cancel(); wg.Done() }()`). For a variable declared first and assigned in branches (`var cancel context.CancelFunc; if d > 0 { ctx, cancel = ... } else { ... }`), a single `defer cancel()` after the branches is enough.
 
 ```go
 // Bad
@@ -124,7 +125,13 @@ defer cancel()
 result, err := fetch(ctx)
 ```
 
-A cancel func that escapes the function is skipped, because ownership has moved: when it is returned, passed as an argument, stored in a field or composite literal, assigned to another variable, or captured by a `go` statement. A blank `_` cancel is left to `go vet`'s `lostcancel`.
+A cancel func that escapes the function is skipped, because ownership has moved: when it is returned, passed as an argument, stored in a field or composite literal, assigned to another variable, captured by a `go` statement, or referenced inside any function literal that is not itself the deferred call (`time.AfterFunc(d, func() { cancel() })`, `t.Cleanup(func() { cancel() })`, `f := func() { cancel() }`). A blank `_` cancel is left to `go vet`'s `lostcancel`.
+
+### Known limitations
+
+- Loop bodies are skipped: a `defer` inside a `for` or `range` body piles up until the function returns, so the fix there is a per-iteration function, not a `defer`.
+- Only assignments are matched, so `var ctx, cancel = context.WithCancel(...)` is not checked.
+- A cancel variable that is not declared in the enclosing function (a package-level variable, a parameter, or one captured from an outer function) is skipped, since it is managed elsewhere.
 
 ### Difference from `lostcancel`
 
@@ -452,6 +459,12 @@ type User struct{ ID int }
 func (u User) Name() string { return "" } // reported: should be in user.go
 ```
 
+### Known limitations
+
+- Only types declared at file scope are tracked. A method on a type alias (`type A = T`) is never reported, because receivers are matched by name and aliases are not resolved to the type they stand for.
+- Build constraints are recognised only in the `//go:build` form, not the legacy `// +build` form.
+- With `allow-file-suffix`, the stem comes from the file that declares the type, not from the type's name: `type User` declared in `account.go` accepts methods in `account_sql.go`, not `user_sql.go`.
+
 ### Options
 
 | Option | Default | Description |
@@ -731,4 +744,8 @@ A transaction that escapes the function is skipped, because the caller owns it: 
 
 ### Known limitations
 
-Only `*database/sql.Tx` is tracked; other transaction types (`pgx.Tx`, `sqlx.Tx`) are not. The check does not prove a `Rollback` runs on *every* path, only that one is deferred in the function.
+- Only `*database/sql.Tx` is tracked; other transaction types (`pgx.Tx`, `sqlx.Tx`) are not.
+- The check does not prove a `Rollback` runs on *every* path, only that one is deferred in the function.
+- Passing the transaction to any function counts as handing over ownership, so the common `tx, _ := db.Begin(); repo.insert(tx, row); tx.Commit()` is not reported. Methods called on `tx` itself (`tx.Exec`, `tx.Commit`) are not hand-overs.
+- Any call that returns a `*sql.Tx` is treated as a `Begin`. A getter such as `tx := txFromContext(ctx)` is reported too; add `defer tx.Rollback()` or `//nolint:tidygo` where the transaction is owned elsewhere.
+- A variable assigned from `Begin` twice in one function is reported at each assignment.

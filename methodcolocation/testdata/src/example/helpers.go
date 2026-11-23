@@ -6,19 +6,15 @@ func (u User) Display() string { return u.name } // want `method User\.Display s
 
 func (u *User) Reset() { u.name = "" } // want `method User\.Reset should be declared in user\.go, the file that declares User`
 
-func (t *Team) Add(
-	u User,
-) {
+func (t *Team) Add(u User) { // want `method Team\.Add should be declared in user\.go`
 	t.members = append(t.members, u)
-} // want `method Team\.Add should be declared in user\.go, the file that declares Team`
+}
 
 func (b Box[T]) Peek() T { return b.v } // want `method Box\.Peek should be declared in user\.go, the file that declares Box`
 
-func (b *Box[K]) Set(
-	v K,
-) {
+func (b *Box[K]) Set(v K) { // want `method Box\.Set should be declared in user\.go`
 	b.v = v
-} // want `method Box\.Set should be declared in user\.go, the file that declares Box`
+}
 
 func (p *Pair[K, V]) Value() V { return p.v } // want `method Pair\.Value should be declared in user\.go, the file that declares Pair`
 
