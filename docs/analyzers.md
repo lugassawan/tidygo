@@ -49,7 +49,7 @@ The plugin runs in syntax-only mode, so the check matches the identifier name on
 
 ## dupfunc
 
-Reports a function or method whose body is identical to that of an earlier function in the same package. Copy-pasted bodies drift apart when only one copy is fixed; extract the shared logic and call it from both. Only bodies with at least 3 top-level statements are compared, so trivial getters and one-line wrappers are left alone.
+Reports a function or method whose body is identical to that of an earlier function in the same package. Copy-pasted bodies drift apart when only one copy is fixed; extract the shared logic and call it from both. Only bodies with at least 3 top-level statements are compared by default (see `min-statements`), so trivial getters and one-line wrappers are left alone.
 
 Bodies are compared structurally. Positions, comments and layout are ignored, but identifier names, literals and operators must match exactly. A renamed local variable, a different constant or a different operator makes two bodies different. Only the body is compared: parameter lists and receivers are not, so two methods on different types with the same body are reported.
 
@@ -79,13 +79,30 @@ Files are ordered by name and offset, and every later duplicate is reported agai
 
 Methods are named with their receiver type, for example `function right.count has the same body as left.count (types.go:5)`.
 
-This analyzer has no options.
-
 ### Known limitations
 
 `_test.go` files and generated files (those with a `// Code generated ... DO NOT EDIT.` header) are skipped entirely, since table-test scaffolding repeats on purpose. Function literals are never compared, and neither are `init` functions: a package may declare several, and one cannot call another to share a body. Duplicates are only found within one package, and only whole bodies are compared, not repeated fragments inside different functions; the `dupl` linter covers larger token-level clones.
 
-The analyzer runs without type information, so two identical bodies are reported even if their parameters or receivers have different types.
+The analyzer runs without type information, so two identical bodies are reported even if their parameters or receivers have different types (for example `clampInt` and `clampFloat`). Raising `min-statements` reduces such noise, and `//nolint:tidygo` on the later function silences a deliberate copy.
+
+### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `min-statements` | `3` | Smallest number of top-level statements a body needs to be compared. `0` or unset uses the default; a negative value is an error. |
+
+```yaml
+linters:
+  settings:
+    custom:
+      tidygo:
+        type: "module"
+        settings:
+          dupfunc:
+            min-statements: 5
+```
+
+Unknown keys are rejected, so a typo in the option name fails loudly instead of being silently ignored.
 
 ## elseifelse
 

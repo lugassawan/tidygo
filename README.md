@@ -18,7 +18,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 |---|---|
 | `confusingop` | Reports `=+`, `=-`, `=!` and `=^` assignments that look like typos for `+=`, `-=`, `!=` and `^=` |
 | `constcond` | Forbids `if` and `for` statements whose condition is the literal `true` or `false` |
-| `dupfunc` | Reports functions whose bodies (at least 3 statements) are identical to an earlier function in the same package |
+| `dupfunc` | Reports functions whose bodies (at least 3 statements) are identical to an earlier function in the same package (configurable) |
 | `elseifelse` | Requires an `if … else if` chain to end in a final `else` (opt-in, off by default) |
 | `emptycomment` | Forbids `/* */` block comments that contain only whitespace and `*` |
 | `emptyfunc` | Requires a comment inside function bodies that contain no statements |
@@ -62,6 +62,9 @@ linters:
       tidygo:
         type: "module"
         settings:
+          # Optional: raise the fewest statements a function body needs to be compared (default 3).
+          dupfunc:
+            min-statements: 5
           # Optional: turn on the opt-in analyzer that requires a final else in if-else-if chains.
           elseifelse:
             enabled: true

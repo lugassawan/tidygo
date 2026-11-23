@@ -35,6 +35,7 @@ func init() {
 // settings mirrors the golangci-lint `linters.settings.custom.tidygo.settings` block.
 // Unknown keys are rejected by register.DecodeSettings, so typos fail loudly.
 type settings struct {
+	DupFunc       dupFuncSettings       `json:"dupfunc"`
 	ElseIfElse    elseIfElseSettings    `json:"elseifelse"`
 	FuncName      funcNameSettings      `json:"funcname"`
 	IfaceName     ifaceNameSettings     `json:"ifacename"`
@@ -48,6 +49,11 @@ type settings struct {
 
 type funcNameSettings struct {
 	IncludeVars bool `json:"include-vars"`
+}
+
+// dupFuncSettings tunes dupfunc. Zero or unset selects the default minimum; negative values are rejected.
+type dupFuncSettings struct {
+	MinStatements int `json:"min-statements"`
 }
 
 // elseIfElseSettings switches the opt-in elseifelse analyzer on; it is off by default.
@@ -75,6 +81,7 @@ type noLocalStructSettings struct {
 
 // config holds the decoded per-analyzer configuration.
 type config struct {
+	dupfunc       dupfunc.Config
 	elseifelse    bool
 	funcname      funcname.Config
 	ifacename     ifacename.Config
@@ -87,6 +94,7 @@ type config struct {
 }
 
 type plugin struct {
+	dupfunc       *analysis.Analyzer
 	elseifelse    bool
 	funcname      *analysis.Analyzer
 	ifacename     *analysis.Analyzer
@@ -102,7 +110,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	analyzers := []*analysis.Analyzer{
 		confusingop.Analyzer,
 		constcond.Analyzer,
-		dupfunc.Analyzer,
+		p.dupfunc,
 		emptycomment.Analyzer,
 		emptyfunc.Analyzer,
 		p.funcname,
@@ -136,6 +144,7 @@ func newPlugin(conf any) (register.LinterPlugin, error) {
 		return nil, err
 	}
 	return &plugin{
+		dupfunc:       dupfunc.New(cfg.dupfunc),
 		elseifelse:    cfg.elseifelse,
 		funcname:      funcname.New(cfg.funcname),
 		ifacename:     ifacename.New(cfg.ifacename),
@@ -167,6 +176,14 @@ func validateMax(s settings) error {
 	return nil
 }
 
+// validateMinStatements rejects a negative minimum so a typo does not silently fall back to the default.
+func validateMinStatements(s settings) error {
+	if s.DupFunc.MinStatements < 0 {
+		return fmt.Errorf("dupfunc.min-statements must not be negative, got %d", s.DupFunc.MinStatements)
+	}
+	return nil
+}
+
 func decodeConfig(conf any) (config, error) {
 	s, err := register.DecodeSettings[settings](conf)
 	if err != nil {
@@ -175,7 +192,11 @@ func decodeConfig(conf any) (config, error) {
 	if err := validateMax(s); err != nil {
 		return config{}, err
 	}
+	if err := validateMinStatements(s); err != nil {
+		return config{}, err
+	}
 	return config{
+		dupfunc:       dupfunc.Config{MinStmts: s.DupFunc.MinStatements},
 		elseifelse:    s.ElseIfElse.Enabled,
 		funcname:      funcname.Config{IncludeVars: s.FuncName.IncludeVars},
 		ifacename:     ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},

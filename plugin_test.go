@@ -17,6 +17,7 @@ import (
 const analyzerName = "nolateexport"
 
 const (
+	dupFuncKey       = "dupfunc"
 	elseIfElseKey    = "elseifelse"
 	enabledKey       = "enabled"
 	funcNameKey      = "funcname"
@@ -26,6 +27,7 @@ const (
 	maxCasesKey      = "maxcases"
 	maxCaseLinesKey  = "maxcaselines"
 	maxKey           = "max"
+	minStatementsKey = "min-statements"
 	misspelledMaxKey = "maximum"
 	noAnonNestedKey  = "noanonnested"
 	noLocalStructKey = "nolocalstruct"
@@ -445,6 +447,42 @@ func TestNewPluginWiresFuncNameConfigIntoAnalyzer(t *testing.T) {
 		t.Fatalf("resolving testdata: %v", err)
 	}
 	analysistest.Run(t, testdata, got, "includevars")
+}
+
+func TestDecodeConfigDupFunc(t *testing.T) {
+	t.Run("min-statements reaches the dupfunc config", func(t *testing.T) {
+		got, err := decodeConfig(map[string]any{dupFuncKey: map[string]any{minStatementsKey: 2}})
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		if got.dupfunc.MinStmts != 2 {
+			t.Errorf("decodeConfig() dupfunc = %+v, want MinStmts=2", got.dupfunc)
+		}
+	})
+
+	t.Run("unknown dupfunc key is rejected", func(t *testing.T) {
+		requireUnknownKey(t, map[string]any{dupFuncKey: map[string]any{"min-statement": 2}}, "min-statement")
+	})
+
+	t.Run("negative min-statements is rejected", func(t *testing.T) {
+		_, err := decodeConfig(map[string]any{dupFuncKey: map[string]any{minStatementsKey: -1}})
+		if err == nil {
+			t.Fatal("decodeConfig() error = nil, want negative-value error")
+		}
+		if !strings.Contains(err.Error(), dupFuncKey) {
+			t.Errorf("error %q does not name the setting", err)
+		}
+	})
+}
+
+func TestNewPluginWiresDupFuncConfigIntoAnalyzer(t *testing.T) {
+	got := buildNamed(t, map[string]any{dupFuncKey: map[string]any{minStatementsKey: 2}}, dupFuncKey)
+	// The custom package only passes if min-statements reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(dupFuncKey, "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "custom")
 }
 
 // buildAnalyzer builds the plugin from conf and returns the analyzer called name, or nil if it is not registered.

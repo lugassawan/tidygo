@@ -200,3 +200,38 @@ func init() {
 	sink(2)
 	sink(3)
 }
+
+// A comm clause with a communication differs from a default clause whose body starts with the same receive.
+func selectCase(a chan int) {
+	sink(1)
+	sink(2)
+	select {
+	case <-a:
+		sink(3)
+	}
+}
+
+func selectDefault(a chan int) {
+	sink(1)
+	sink(2)
+	select {
+	default:
+		<-a
+		sink(3)
+	}
+}
+
+type T []int
+
+// A typed literal differs from an elided one whose first element is that type's name.
+func litTyped() {
+	sink(1)
+	sink(2)
+	sink([][]int{T{1, 2}})
+}
+
+func litElided(T int) {
+	sink(1)
+	sink(2)
+	sink([][]int{{T, 1, 2}})
+}

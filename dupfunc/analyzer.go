@@ -1,8 +1,8 @@
 // Package dupfunc defines an analyzer that reports functions whose bodies are
 // identical to an earlier function in the same package. Only bodies of at
-// least DefaultMinStmts top-level statements are compared, test files and
-// generated files are skipped, and function literals and init functions are
-// ignored.
+// least DefaultMinStmts top-level statements are compared (Config.MinStmts
+// overrides the minimum), test files and generated files are skipped, and
+// function literals and init functions are ignored.
 //
 // Bodies are compared structurally: positions, comments and layout are
 // ignored, but identifier names, literals and operators must match exactly, so
@@ -23,14 +23,34 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// DefaultMinStmts is the smallest number of top-level statements a body needs to be compared.
+// DefaultMinStmts is the smallest number of top-level statements a body needs to
+// be compared when Config.MinStmts is not positive.
 const DefaultMinStmts = 3
 
-// Analyzer reports functions with the same body as an earlier function in the package.
-var Analyzer = &analysis.Analyzer{
-	Name: "dupfunc",
-	Doc:  "forbids functions whose bodies are identical to an earlier function in the same package",
-	Run:  run,
+// Config controls the optional behaviour of the analyzer.
+type Config struct {
+	// MinStmts is the smallest number of top-level statements a body needs to be
+	// compared. Values <= 0 select DefaultMinStmts.
+	MinStmts int
+}
+
+// Analyzer reports functions with the same body as an earlier function in the
+// package, comparing bodies of at least DefaultMinStmts statements.
+var Analyzer = New(Config{})
+
+// New builds a dupfunc analyzer with the given configuration.
+func New(cfg Config) *analysis.Analyzer {
+	minStmts := cfg.MinStmts
+	if minStmts <= 0 {
+		minStmts = DefaultMinStmts
+	}
+	return &analysis.Analyzer{
+		Name: "dupfunc",
+		Doc:  "forbids functions whose bodies are identical to an earlier function in the same package",
+		Run: func(pass *analysis.Pass) (any, error) {
+			return run(pass, minStmts)
+		},
+	}
 }
 
 // candidate is a function eligible for comparison together with its source position.
@@ -39,8 +59,8 @@ type candidate struct {
 	pos  token.Position
 }
 
-func run(pass *analysis.Pass) (any, error) {
-	candidates := collect(pass)
+func run(pass *analysis.Pass, minStmts int) (any, error) {
+	candidates := collect(pass, minStmts)
 
 	// Sort by position so the "first" function, and so every report, is
 	// deterministic regardless of the order the files were loaded in.
@@ -67,7 +87,7 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 // collect returns the functions large enough to compare, skipping test and generated files.
-func collect(pass *analysis.Pass) []candidate {
+func collect(pass *analysis.Pass, minStmts int) []candidate {
 	var out []candidate
 	for _, f := range pass.Files {
 		if strings.HasSuffix(pass.Fset.File(f.Pos()).Name(), "_test.go") || ast.IsGenerated(f) {
@@ -75,7 +95,7 @@ func collect(pass *analysis.Pass) []candidate {
 		}
 		for _, d := range f.Decls {
 			fd, ok := d.(*ast.FuncDecl)
-			if !ok || fd.Body == nil || len(fd.Body.List) < DefaultMinStmts || isInit(fd) {
+			if !ok || fd.Body == nil || len(fd.Body.List) < minStmts || isInit(fd) {
 				continue
 			}
 			out = append(out, candidate{decl: fd, pos: pass.Fset.Position(fd.Pos())})
@@ -132,6 +152,12 @@ func writeDetail(b *strings.Builder, n ast.Node) {
 		fmt.Fprintf(b, " %t %t %t", x.Init != nil, x.Cond != nil, x.Post != nil)
 	case *ast.ValueSpec:
 		fmt.Fprintf(b, " %d %t", len(x.Names), x.Type != nil)
+	case *ast.CommClause:
+		// Comm is a statement like the ones in Body, so `case <-a:` and `default: <-a` look alike.
+		fmt.Fprintf(b, " %t", x.Comm != nil)
+	case *ast.CompositeLit:
+		// An elided type (the inner literal of [][]int{{1}}) leaves no child to tell it from a typed one.
+		fmt.Fprintf(b, " %t", x.Type != nil)
 	case *ast.IncDecStmt:
 		fmt.Fprintf(b, " %s", x.Tok)
 	case *ast.BranchStmt:
@@ -157,6 +183,8 @@ func funcName(fd *ast.FuncDecl) string {
 		return fd.Name.Name
 	}
 	recv := recvTypeName(fd.Recv.List[0].Type)
+	// Defensive: a receiver that parses always resolves to a name, so this is
+	// only a guard against a malformed tree producing ".name".
 	if recv == "" {
 		return fd.Name.Name
 	}
