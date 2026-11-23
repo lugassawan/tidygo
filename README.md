@@ -17,6 +17,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | Analyzer | Description |
 |---|---|
 | `funcname` | Forbids underscores in function and method names |
+| `ifinitonly` | Forbids `if` init variables used only in the condition |
 | `maxparams` | Forbids functions with more than 7 parameters |
 | `nolateconst` | Forbids `const`/`var` declarations after function declarations |
 | `nolateexport` | Forbids exported functions after unexported functions, and exported methods after unexported methods of the same type |
