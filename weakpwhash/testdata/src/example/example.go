@@ -49,15 +49,8 @@ func scryptKey(pw, salt []byte, n int) {
 func argon2Keys(pw, salt []byte, mem uint32) {
 	_ = argon2.Key(pw, nil, 1, 65536, 4, 32)           // want `argon2.Key uses a constant salt`
 	_ = argon2.IDKey(pw, []byte("s"), 1, 65536, 4, 32) // want `argon2.IDKey uses a constant salt`
-	_ = argon2.Key(
-		pw,
-		salt,
-		1,
-		4096,
-		4,
-		32,
-	) // want `argon2.Key memory 4096 KiB is below the minimum 19456 KiB`
-	_ = argon2.IDKey(pw, salt, 1, 19455, 4, 32) // want `argon2.IDKey memory 19455 KiB is below`
+	_ = argon2.Key(pw, salt, 1, 4096, 4, 32)           // want `memory 4096 KiB is below the minimum 19456 KiB`
+	_ = argon2.IDKey(pw, salt, 1, 19455, 4, 32)        // want `argon2.IDKey memory 19455 KiB is below`
 	_ = argon2.IDKey(pw, salt, 1, 19456, 4, 32)
 	_ = argon2.IDKey(pw, salt, 1, mem, 4, 32)
 }
