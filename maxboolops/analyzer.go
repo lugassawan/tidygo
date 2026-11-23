@@ -1,7 +1,7 @@
 // Package maxboolops defines an analyzer that reports boolean expressions with
-// too many && and || operators. Parentheses and unary ! do not split an
-// expression, but call arguments and function literals start a new one.
-// Config.Max overrides the default limit of DefaultMax.
+// too many && and || operators; call arguments and function literals start a new
+// expression. Config.Max overrides the default limit of DefaultMax.
+// See docs/analyzers/maxboolops.md.
 package maxboolops
 
 import (

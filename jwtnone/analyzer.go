@@ -1,8 +1,7 @@
 // Package jwtnone defines an analyzer that reports uses of the JWT "none"
-// algorithm. A token signed with SigningMethodNone carries no signature, and
-// UnsafeAllowNoneSignatureType makes a parser accept such tokens, so either one
-// lets an attacker forge claims. The analyzer matches by resolved object, so
-// import aliases and dot imports are covered.
+// algorithm (SigningMethodNone, UnsafeAllowNoneSignatureType), which lets an
+// attacker forge claims. Matching is by resolved object, not by name.
+// See docs/analyzers/jwtnone.md.
 package jwtnone
 
 import (

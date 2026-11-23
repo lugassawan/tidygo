@@ -1,5 +1,6 @@
 // Package confusingop defines an analyzer that reports assignments written as
 // =+, =-, =! or =^, which are usually typos for +=, -=, != or ^=.
+// See docs/analyzers/confusingop.md.
 package confusingop
 
 import (

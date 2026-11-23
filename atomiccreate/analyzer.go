@@ -34,7 +34,6 @@ const message = "os.%s after os.Stat existence check is racy; use os.OpenFile wi
 // creators lists the os functions that create a file without exclusivity.
 var creators = []string{"Create", "WriteFile", "OpenFile"}
 
-// checker holds the per-function state needed to resolve errors and paths.
 type checker struct {
 	pass     *analysis.Pass
 	info     *types.Info
@@ -115,7 +114,6 @@ func (c *checker) notExistStats(cond ast.Expr) []*ast.CallExpr {
 	return stats
 }
 
-// conjuncts flattens a chain of && into its operands.
 func conjuncts(e ast.Expr) []ast.Expr {
 	switch x := e.(type) {
 	case *ast.ParenExpr:

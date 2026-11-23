@@ -1,6 +1,6 @@
 // Package nolateconst defines an analyzer that forbids package-level const
 // and var declarations that appear after any function or method declaration.
-// All constants and variables should be grouped before functions.
+// See docs/analyzers/nolateconst.md.
 package nolateconst
 
 import (

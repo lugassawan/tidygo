@@ -1,5 +1,6 @@
 // Package emptycomment defines an analyzer that reports block comments holding
 // nothing but whitespace and asterisks.
+// See docs/analyzers/emptycomment.md.
 package emptycomment
 
 import (

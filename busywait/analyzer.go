@@ -1,7 +1,7 @@
-// Package busywait reports loops that spin on a plain variable or field, with an empty
-// body or a lone time.Sleep or runtime.Gosched. An unsynchronised read is a data race
-// that burns CPU. Conditions with calls, receives or index expressions may be atomic
-// or context polls and are skipped; a bare for {} is left to staticcheck SA5002.
+// Package busywait reports loops that spin on a plain variable or field, with an
+// empty body or a lone time.Sleep or runtime.Gosched. An unsynchronised read is a
+// data race that burns CPU; conditions with calls or receives may be polls and are skipped.
+// See docs/analyzers/busywait.md.
 package busywait
 
 import (
@@ -84,7 +84,6 @@ func isPlainBinaryOp(op token.Token) bool {
 	return false
 }
 
-// isSpinBody reports whether body is empty or a single yield to the scheduler.
 func isSpinBody(info *types.Info, body *ast.BlockStmt) bool {
 	switch len(body.List) {
 	case 0:

@@ -1,5 +1,6 @@
 // Package emptyfunc defines an analyzer that requires a comment inside function
 // bodies that contain no statements.
+// See docs/analyzers/emptyfunc.md.
 package emptyfunc
 
 import (

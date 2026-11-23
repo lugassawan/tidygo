@@ -1,10 +1,8 @@
 // Package weakpwhash defines an analyzer that reports password-hashing calls
 // with a constant salt or a constant work factor below a conservative floor.
-// A constant salt lets one precomputed table attack every password; a low cost
-// makes brute force cheap. The floors are deliberately lenient, so passing them
-// is not a recommendation: stronger settings are advised. Only compile-time
-// constants are judged, so values read from variables or configuration are
-// never reported.
+// The floors are lenient, so passing them is not a recommendation, and only
+// compile-time constants are judged.
+// See docs/analyzers/weakpwhash.md.
 package weakpwhash
 
 import (
@@ -112,8 +110,6 @@ func checkCall(pass *analysis.Pass, call *ast.CallExpr, r rule) {
 	}
 }
 
-// argAt returns the call argument at index i, or nil when the rule has no such
-// argument or the call is too short to have it.
 func argAt(call *ast.CallExpr, i int) ast.Expr {
 	if i == noArg || i >= len(call.Args) {
 		return nil
@@ -121,7 +117,6 @@ func argAt(call *ast.CallExpr, i int) ast.Expr {
 	return call.Args[i]
 }
 
-// constInt returns the compile-time integer value of e.
 func constInt(info *types.Info, e ast.Expr) (int64, bool) {
 	tv, ok := info.Types[e]
 	if !ok || tv.Value == nil {

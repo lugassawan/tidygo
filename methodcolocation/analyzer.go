@@ -1,7 +1,7 @@
 // Package methodcolocation defines an analyzer that requires a method to be
-// declared in the same file as its receiver type. Test, generated, //go:build
-// and GOOS/GOARCH-suffixed files are exempt on either side, as are aliases;
-// Config.AllowFileSuffix also accepts <stem>_<suffix>.go for a type in <stem>.go.
+// declared in the same file as its receiver type. Test, generated, build-constrained
+// and platform-suffixed files are exempt on either side, as are aliases.
+// See docs/analyzers/methodcolocation.md.
 package methodcolocation
 
 import (
@@ -51,7 +51,6 @@ func New(cfg Config) *analysis.Analyzer {
 	}
 }
 
-// typeDecl records the file that declares a named type.
 type typeDecl struct {
 	file   string // base name of the declaring file
 	exempt bool   // the declaring file is exempt from the check
@@ -73,7 +72,6 @@ func run(pass *analysis.Pass, cfg Config) (any, error) {
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
 }
 
-// declaredTypes maps every file-scope type name of the package to its declaring file.
 func declaredTypes(pass *analysis.Pass) map[string]typeDecl {
 	decls := map[string]typeDecl{}
 	for _, file := range pass.Files {
@@ -123,8 +121,6 @@ func fileName(pass *analysis.Pass, file *ast.File) string {
 	return filepath.Base(pass.Fset.PositionFor(file.Package, false).Filename)
 }
 
-// isExemptFile reports whether a file takes no part in the check: a test,
-// generated, build-constrained or platform-specific file.
 func isExemptFile(file *ast.File, name string) bool {
 	return strings.HasSuffix(name, "_test.go") ||
 		ast.IsGenerated(file) ||
@@ -159,8 +155,6 @@ func hasPlatformSuffix(name string) bool {
 	return slices.Contains(knownGOOS, suffix) || slices.Contains(knownGOARCH, suffix)
 }
 
-// isSuffixedSibling reports whether file is <stem>_<anything>.go for a type
-// declared in <stem>.go.
 func isSuffixedSibling(file, typeFile string) bool {
 	return strings.HasPrefix(file, strings.TrimSuffix(typeFile, ".go")+"_")
 }

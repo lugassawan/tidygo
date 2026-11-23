@@ -1,8 +1,7 @@
 // Package maxcaselines defines an analyzer that reports case clauses whose
-// body spans too many lines. The span runs from the first statement's start
-// line through the last statement's end line, inclusive, so blank and comment
-// lines between statements count while leading and trailing comments do not.
-// Config.Max overrides the default limit of DefaultMax.
+// body spans too many lines, from the first statement's start line through the
+// last statement's end line. Config.Max overrides the default limit of DefaultMax.
+// See docs/analyzers/maxcaselines.md.
 package maxcaselines
 
 import (
@@ -68,7 +67,6 @@ func run(pass *analysis.Pass, limit int) (any, error) {
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
 }
 
-// clauseBody returns the statements of a switch or select clause.
 func clauseBody(n ast.Node) []ast.Stmt {
 	switch c := n.(type) {
 	case *ast.CaseClause:

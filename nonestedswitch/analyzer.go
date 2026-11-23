@@ -1,10 +1,6 @@
 // Package nonestedswitch defines an analyzer that forbids a switch or type
 // switch nested inside the case clause of another switch or type switch.
-//
-// The nearest enclosing switch-like statement in the same function decides:
-// a function literal or declaration starts a new scope, and a select
-// statement in between is itself the nearest switch-like statement, so
-// neither is reported. if and for blocks do not interrupt the search.
+// See docs/analyzers/nonestedswitch.md.
 package nonestedswitch
 
 import (
