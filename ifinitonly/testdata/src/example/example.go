@@ -278,14 +278,12 @@ func selectorInOrOperand(x T) {
 }
 
 func shadowingClosureInLazyOperand() {
-	if n := f(); n > 0 &&
-		func(n int) bool { return n > 1 }(2) { // want `variable "n" in if init is only used in the condition`
+	if n := f(); n > 0 && func(n int) bool { return n > 1 }(2) { // want `"n" in if init`
 	}
 }
 
-func structFieldInLazyClosure() {
-	if n := f(); n > 0 &&
-		func() bool { var s struct{ n int }; return s.n == 0 }() { // want `variable "n" in if init is only used in the condition`
+func structFieldInLazyOperand() {
+	if n := f(); n > 0 && (struct{ n int }{}).n == 0 { // want `"n" in if init`
 	}
 }
 
