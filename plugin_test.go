@@ -17,11 +17,12 @@ import (
 const analyzerName = "nolateexport"
 
 const (
-	ifaceNameKey    = "ifacename"
-	handlerIface    = "Handler"
-	maxCasesKey     = "maxcases"
-	maxCaseLinesKey = "maxcaselines"
-	maxKey          = "max"
+	ifaceNameKey     = "ifacename"
+	handlerIface     = "Handler"
+	maxCasesKey      = "maxcases"
+	maxCaseLinesKey  = "maxcaselines"
+	maxKey           = "max"
+	noLocalStructKey = "nolocalstruct"
 )
 
 func TestDecodeConfig(t *testing.T) {
@@ -301,4 +302,63 @@ func TestNewPluginWiresIfaceNameConfigIntoAnalyzer(t *testing.T) {
 		t.Fatalf("resolving testdata: %v", err)
 	}
 	analysistest.Run(t, testdata, got, "allowed")
+}
+
+func TestDecodeConfigNoLocalStruct(t *testing.T) {
+	t.Run("all-types reaches the nolocalstruct config", func(t *testing.T) {
+		conf := map[string]any{noLocalStructKey: map[string]any{"all-types": true}}
+		got, err := decodeConfig(conf)
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		if !got.nolocalstruct.AllTypes {
+			t.Errorf("decodeConfig() nolocalstruct = %+v, want AllTypes=true", got.nolocalstruct)
+		}
+	})
+
+	t.Run("unknown nolocalstruct key is rejected", func(t *testing.T) {
+		requireUnknownKey(t, map[string]any{noLocalStructKey: map[string]any{"all-type": true}}, "all-type")
+	})
+}
+
+func TestNewPluginWiresNoLocalStructConfigIntoAnalyzer(t *testing.T) {
+	got := buildNamed(t, map[string]any{noLocalStructKey: map[string]any{"all-types": true}}, noLocalStructKey)
+	// The alltypes package only passes if all-types reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(noLocalStructKey, "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "alltypes")
+}
+
+// buildNamed builds the plugin from conf and returns the analyzer called name.
+func buildNamed(t *testing.T, conf map[string]any, name string) *analysis.Analyzer {
+	t.Helper()
+	p, err := newPlugin(conf)
+	if err != nil {
+		t.Fatalf("newPlugin() error = %v", err)
+	}
+	analyzers, err := p.BuildAnalyzers()
+	if err != nil {
+		t.Fatalf("BuildAnalyzers() error = %v", err)
+	}
+	for _, a := range analyzers {
+		if a.Name == name {
+			return a
+		}
+	}
+	t.Fatalf("BuildAnalyzers() has no %s analyzer", name)
+	return nil
+}
+
+// requireUnknownKey asserts that decoding conf fails and names the offending key.
+func requireUnknownKey(t *testing.T, conf map[string]any, key string) {
+	t.Helper()
+	_, err := decodeConfig(conf)
+	if err == nil {
+		t.Fatal("decodeConfig() error = nil, want unknown-field error")
+	}
+	if !strings.Contains(err.Error(), key) {
+		t.Errorf("error %q does not name the unknown field", err)
+	}
 }

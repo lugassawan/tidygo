@@ -24,7 +24,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `maxparams` | Forbids functions with more than 7 parameters |
 | `nolateconst` | Forbids `const`/`var` declarations after function declarations |
 | `nolateexport` | Forbids exported functions after unexported functions, and exported methods after unexported methods of the same type |
-| `nolocalstruct` | Forbids named struct type declarations inside function bodies |
+| `nolocalstruct` | Forbids named struct type declarations inside function bodies (optionally all named types) |
 | `nonestedswitch` | Forbids a `switch` or type switch nested inside another `switch` or type switch |
 
 ## Installation
@@ -65,6 +65,9 @@ linters:
           # Optional: also require exported methods before unexported standalone functions.
           nolateexport:
             unexported-funcs-last: true
+          # Optional: also forbid local interfaces and defined types, not just structs.
+          nolocalstruct:
+            all-types: true
 ```
 
 Build and run:

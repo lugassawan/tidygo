@@ -26,10 +26,11 @@ func init() {
 // settings mirrors the golangci-lint `linters.settings.custom.tidygo.settings` block.
 // Unknown keys are rejected by register.DecodeSettings, so typos fail loudly.
 type settings struct {
-	IfaceName    ifaceNameSettings    `json:"ifacename"`
-	MaxCaseLines maxSettings          `json:"maxcaselines"`
-	MaxCases     maxSettings          `json:"maxcases"`
-	NoLateExport noLateExportSettings `json:"nolateexport"`
+	IfaceName     ifaceNameSettings     `json:"ifacename"`
+	MaxCaseLines  maxSettings           `json:"maxcaselines"`
+	MaxCases      maxSettings           `json:"maxcases"`
+	NoLateExport  noLateExportSettings  `json:"nolateexport"`
+	NoLocalStruct noLocalStructSettings `json:"nolocalstruct"`
 }
 
 type ifaceNameSettings struct {
@@ -46,19 +47,25 @@ type noLateExportSettings struct {
 	UnexportedFuncsLast bool `json:"unexported-funcs-last"`
 }
 
+type noLocalStructSettings struct {
+	AllTypes bool `json:"all-types"`
+}
+
 // config holds the decoded per-analyzer configuration.
 type config struct {
-	ifacename    ifacename.Config
-	maxcaselines maxcaselines.Config
-	maxcases     maxcases.Config
-	nolateexport nolateexport.Config
+	ifacename     ifacename.Config
+	maxcaselines  maxcaselines.Config
+	maxcases      maxcases.Config
+	nolateexport  nolateexport.Config
+	nolocalstruct nolocalstruct.Config
 }
 
 type plugin struct {
-	ifacename    *analysis.Analyzer
-	maxcaselines *analysis.Analyzer
-	maxcases     *analysis.Analyzer
-	nolateexport *analysis.Analyzer
+	ifacename     *analysis.Analyzer
+	maxcaselines  *analysis.Analyzer
+	maxcases      *analysis.Analyzer
+	nolateexport  *analysis.Analyzer
+	nolocalstruct *analysis.Analyzer
 }
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
@@ -71,7 +78,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		maxparams.Analyzer,
 		nolateconst.Analyzer,
 		p.nolateexport,
-		nolocalstruct.Analyzer,
+		p.nolocalstruct,
 		nonestedswitch.Analyzer,
 	}, nil
 }
@@ -86,10 +93,11 @@ func newPlugin(conf any) (register.LinterPlugin, error) {
 		return nil, err
 	}
 	return &plugin{
-		ifacename:    ifacename.New(cfg.ifacename),
-		maxcaselines: maxcaselines.New(cfg.maxcaselines),
-		maxcases:     maxcases.New(cfg.maxcases),
-		nolateexport: nolateexport.New(cfg.nolateexport),
+		ifacename:     ifacename.New(cfg.ifacename),
+		maxcaselines:  maxcaselines.New(cfg.maxcaselines),
+		maxcases:      maxcases.New(cfg.maxcases),
+		nolateexport:  nolateexport.New(cfg.nolateexport),
+		nolocalstruct: nolocalstruct.New(cfg.nolocalstruct),
 	}, nil
 }
 
@@ -119,9 +127,10 @@ func decodeConfig(conf any) (config, error) {
 		return config{}, err
 	}
 	return config{
-		ifacename:    ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
-		maxcaselines: maxcaselines.Config{Max: s.MaxCaseLines.Max},
-		maxcases:     maxcases.Config{Max: s.MaxCases.Max},
-		nolateexport: nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast},
+		ifacename:     ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
+		maxcaselines:  maxcaselines.Config{Max: s.MaxCaseLines.Max},
+		maxcases:      maxcases.Config{Max: s.MaxCases.Max},
+		nolateexport:  nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast},
+		nolocalstruct: nolocalstruct.Config{AllTypes: s.NoLocalStruct.AllTypes},
 	}, nil
 }
