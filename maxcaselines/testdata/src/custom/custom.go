@@ -23,6 +23,11 @@ func bodies(x int, ch chan int) {
 		x++
 		x++
 		// trailing comment
+	case 7: // want `case clause body spans 4 lines, max is 3`
+		x++
+
+		x++
+		x++
 	case 6: // want `case clause body spans 4 lines, max is 3`
 		println(
 			x,

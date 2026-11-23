@@ -17,10 +17,9 @@ import (
 const analyzerName = "nolateexport"
 
 const (
-	ifaceNameKey = "ifacename"
-	handlerIface = "Handler"
-	maxCasesKey  = "maxcases"
-
+	ifaceNameKey    = "ifacename"
+	handlerIface    = "Handler"
+	maxCasesKey     = "maxcases"
 	maxCaseLinesKey = "maxcaselines"
 	maxKey          = "max"
 )

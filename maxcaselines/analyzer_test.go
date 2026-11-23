@@ -1,6 +1,7 @@
 package maxcaselines_test
 
 import (
+	"strconv"
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
@@ -37,6 +38,8 @@ func TestNewNonPositiveMaxUsesDefault(t *testing.T) {
 	testdata := analysistest.TestData()
 	for _, limit := range []int{0, -1} {
 		// The example package is written against the default max of 10.
-		analysistest.Run(t, testdata, maxcaselines.New(maxcaselines.Config{Max: limit}), "example")
+		t.Run(strconv.Itoa(limit), func(t *testing.T) {
+			analysistest.Run(t, testdata, maxcaselines.New(maxcaselines.Config{Max: limit}), "example")
+		})
 	}
 }

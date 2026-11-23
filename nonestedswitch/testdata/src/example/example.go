@@ -80,6 +80,22 @@ func inFuncLit(a, b int) {
 	}
 }
 
+// Reported: nesting inside a function literal is still caught within the closure.
+func nestedInFuncLit(a, b, c int) {
+	switch a {
+	case 1:
+		f := func() {
+			switch b {
+			case 1:
+				switch c { // want `switch statement nested inside another switch`
+				case 1:
+				}
+			}
+		}
+		f()
+	}
+}
+
 // Not reported: the nearest switch-like statement is a select.
 func inSelect(a int, ch chan int) {
 	switch a {

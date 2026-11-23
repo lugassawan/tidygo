@@ -57,8 +57,9 @@ func run(pass *analysis.Pass, limit int) (any, error) {
 		if len(body) == 0 {
 			return
 		}
-		first := pass.Fset.Position(body[0].Pos()).Line
-		last := pass.Fset.Position(body[len(body)-1].End()).Line
+		// Unadjusted positions: //line directives must not skew the span.
+		first := pass.Fset.PositionFor(body[0].Pos(), false).Line
+		last := pass.Fset.PositionFor(body[len(body)-1].End(), false).Line
 		if lines := last - first + 1; lines > limit {
 			pass.Reportf(n.Pos(), "case clause body spans %d lines, max is %d", lines, limit)
 		}
