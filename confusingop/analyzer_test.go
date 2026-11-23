@@ -10,18 +10,16 @@ import (
 	"github.com/lugassawan/tidygo/confusingop"
 )
 
-// fixture is written to a temp dir instead of living under testdata/ because
-// gofmt rewrites "x =+ 1" to "x = +1", which would silently erase the cases
-// under test whenever the pre-commit hook or `make fmt` formats the tree.
-//
-// The want patterns use "." and character classes instead of quotes and
-// escapes so they survive both this raw string and analysistest's parsing.
+// fixture is written at test time because gofmt rewrites "x =+ 1" to "x = +1",
+// which would erase the cases under test.
 const fixture = `package example
 
 func typos(b, d bool) {
 	x := 1
 	var a, c int
 
+	// Expectations below use "." and [x] instead of quotes and escapes so
+	// they survive both this raw string and analysistest's parsing.
 	x =+ 1 // want ".=[+]. looks like a typo for .[+]=."
 	x =- 1 // want ".=[-]. looks like a typo for .[-]=."
 	b =!b  // want ".=[!]. looks like a typo for .[!]=."
@@ -45,6 +43,11 @@ func typos(b, d bool) {
 	x = +a * 2
 	x = a + -1
 	x = a * -1
+
+	// Compact code with no space before "=" is deliberate, not a typo.
+	x=-1
+	b=!b
+	a=+1
 
 	_, _, _, _, _ = x, y, a, c, d
 }

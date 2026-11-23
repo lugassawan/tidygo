@@ -53,3 +53,26 @@ func realConditions(cfg config) {
 		_ = i
 	}
 }
+
+// Documented limitations: the check is syntactic, so a shadowed true is still
+// reported, while switch true and negated or combined literals are not.
+func syntacticOnly(ok bool) {
+	true := false
+	if true { // want `condition is always true; remove the branch or use a real condition`
+		_ = ok
+	}
+}
+
+func notDetected(ok bool) {
+	switch true {
+	case ok:
+	}
+
+	if !true {
+		_ = ok
+	}
+
+	if ok && true {
+		_ = ok
+	}
+}

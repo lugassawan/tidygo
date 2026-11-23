@@ -40,6 +40,11 @@ func run(pass *analysis.Pass) (any, error) {
 		if unary.OpPos != stmt.TokPos+1 {
 			return
 		}
+		// Compact code such as `x=-1` is consistently unspaced, so it is
+		// deliberate; the typo shape has a space before "=" but not after.
+		if stmt.Lhs[len(stmt.Lhs)-1].End() >= stmt.TokPos {
+			return
+		}
 		pass.Reportf(
 			stmt.TokPos,
 			`"=%[1]s" looks like a typo for "%[1]s="; write "= %[1]s" if the unary operator is intended`,
