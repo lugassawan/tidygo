@@ -121,21 +121,6 @@ func outerManagesTx(ctx context.Context, db *sql.DB) error {
 	return begin()
 }
 
-// A transaction per loop iteration is not reported: a deferred Rollback in the
-// loop body would pile up until the function returns.
-func perIterationTx(db *sql.DB, items []int) error {
-	for range items {
-		tx, err := db.Begin()
-		if err != nil {
-			return err
-		}
-		if err := tx.Commit(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type unitOfWork struct{ tx *sql.Tx }
 
 func (u *unitOfWork) current() *sql.Tx { return u.tx }
@@ -195,4 +180,41 @@ func rollbackInNestedClosureCounts(db *sql.DB) error {
 	}
 	release()
 	return tx.Commit()
+}
+
+// A loop iteration that rolls the transaction back by hand on its error path is
+// accepted: the loop-aware check only reports an iteration that never does.
+func loopRollsBackByHand(db *sql.DB, items []int) error {
+	for range items {
+		tx, err := db.Begin()
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec("UPDATE t SET x = 1"); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// The remedy the diagnostic recommends: one function per iteration, with its own defer.
+func perIterationFunction(db *sql.DB, items []int) error {
+	for range items {
+		err := func() error {
+			tx, err := db.Begin()
+			if err != nil {
+				return err
+			}
+			defer tx.Rollback()
+			return tx.Commit()
+		}()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -145,3 +145,87 @@ var literal = func(db *sql.DB) error {
 	}
 	return tx.Commit()
 }
+
+// ---- a Begin inside a loop with no Rollback in the loop body ----
+
+func rangeLoopLeaks(db *sql.DB, items []int) error {
+	for range items {
+		tx, err := db.Begin() // want `transaction tx begun in a loop has no Rollback`
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec("UPDATE t SET x = 1"); err != nil {
+			return err // leaks the transaction and its connection
+		}
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func threeClauseLoopLeaks(db *sql.DB, n int) error {
+	for i := 0; i < n; i++ {
+		tx, err := db.Begin() // want `transaction tx begun in a loop has no Rollback`
+		if err != nil {
+			return err
+		}
+		_ = tx.Commit()
+	}
+	return nil
+}
+
+func bareLoopLeaks(db *sql.DB) error {
+	for {
+		tx, err := db.Begin() // want `transaction tx begun in a loop has no Rollback`
+		if err != nil {
+			return err
+		}
+		return tx.Commit()
+	}
+}
+
+func nestedLoopLeaks(db *sql.DB, rows [][]int) error {
+	for _, row := range rows {
+		for range row {
+			tx, err := db.Begin() // want `transaction tx begun in a loop has no Rollback`
+			if err != nil {
+				return err
+			}
+			_ = tx.Commit()
+		}
+	}
+	return nil
+}
+
+// A function literal is its own function: the loop is outside it, so the plain
+// advice applies, and a defer inside the literal is the fix.
+func literalInLoopLeaks(db *sql.DB, items []int) error {
+	for range items {
+		err := func() error {
+			tx, err := db.Begin() // want `transaction tx has no deferred Rollback`
+			if err != nil {
+				return err
+			}
+			return tx.Commit()
+		}()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ---- a Start* wrapper is tracked like a Begin* one ----
+
+func startTransaction(db *sql.DB) (*sql.Tx, error) {
+	return db.Begin()
+}
+
+func viaStartWrapper(db *sql.DB) error {
+	tx, err := startTransaction(db) // want `transaction tx has no deferred Rollback`
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}

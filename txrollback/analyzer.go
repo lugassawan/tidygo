@@ -40,6 +40,15 @@ var trackedTypes = []txType{
 // transaction: Begin, BeginTx, beginTx, StartTx, startTransaction.
 var beginPrefixes = []string{"begin", "start"}
 
+// Diagnostics. A Begin inside a loop gets its own advice: a deferred Rollback in a
+// loop body would pile up until the function returns, so the fix is a function
+// that handles one iteration.
+const (
+	messagePlain = "transaction %[1]s has no deferred Rollback: add \"defer %[1]s.Rollback()\" after Begin"
+	messageLoop  = "transaction %[1]s begun in a loop has no Rollback: " +
+		"extract the iteration into a function with \"defer %[1]s.Rollback()\""
+)
+
 func run(pass *analysis.Pass) (any, error) {
 	insp, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	if !ok {
@@ -53,27 +62,33 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
 }
 
+// begin is a variable that receives a tracked transaction from a call.
+type begin struct {
+	id   *ast.Ident
+	loop ast.Node // innermost enclosing for or range statement, nil outside loops
+}
+
 func checkFunc(pass *analysis.Pass, ftype *ast.FuncType, body *ast.BlockStmt) {
 	info := pass.TypesInfo
 	begins := collectBegins(info, body)
 	if len(begins) == 0 {
 		return
 	}
-	rolledBack := deferredRollbacks(info, body)
-	handedOffRollbacks(info, body, rolledBack)
+	managed := deferredRollbacks(info, body)
+	handedOffRollbacks(info, body, managed)
 	escaped := escapedObjects(info, body)
 	markResults(info, ftype, escaped)
 
-	for _, id := range begins {
-		obj := info.ObjectOf(id)
-		if rolledBack[obj] || escaped[obj] || declaredOutside(obj, body) {
+	for _, b := range begins {
+		obj := info.ObjectOf(b.id)
+		if managed[obj] || escaped[obj] || declaredOutside(obj, body) || rollsBackIn(info, b.loop, obj) {
 			continue // a transaction declared by an enclosing function is managed there
 		}
-		pass.Reportf(
-			id.Pos(),
-			"transaction %[1]s has no deferred Rollback: add \"defer %[1]s.Rollback()\" after Begin",
-			id.Name,
-		)
+		format := messagePlain
+		if b.loop != nil {
+			format = messageLoop
+		}
+		pass.Reportf(b.id.Pos(), format, b.id.Name)
 	}
 }
 
@@ -83,23 +98,51 @@ func declaredOutside(obj types.Object, body *ast.BlockStmt) bool {
 	return obj == nil || obj.Pos() < body.Pos() || obj.Pos() >= body.End()
 }
 
-// collectBegins returns the identifiers in body that receive a tracked
-// transaction from a call. Nested function literals are their own scope. Loop
-// bodies are skipped: a deferred Rollback there would pile up until the function
-// returns, so the fix for a per-iteration transaction is a per-iteration function.
-func collectBegins(info *types.Info, body *ast.BlockStmt) []*ast.Ident {
-	var begins []*ast.Ident
-	ast.Inspect(body, func(n ast.Node) bool {
-		switch node := n.(type) {
-		case *ast.FuncLit, *ast.ForStmt, *ast.RangeStmt:
-			return false
-		case *ast.AssignStmt:
-			begins = append(begins, beginTargets(info, identsOf(node.Lhs), node.Rhs)...)
-		case *ast.ValueSpec:
-			begins = append(begins, beginTargets(info, node.Names, node.Values)...)
-		}
-		return true
-	})
+// rollsBackIn reports whether loop calls Rollback on obj anywhere in its body,
+// deferred or not. A loop iteration that rolls back by hand is not a leak in
+// every shape, so it is accepted; one that never does is reported.
+func rollsBackIn(info *types.Info, loop ast.Node, obj types.Object) bool {
+	if loop == nil {
+		return false
+	}
+	found := make(map[types.Object]bool)
+	markRollbacksIn(info, loop, found)
+	return found[obj]
+}
+
+// collectBegins returns the variables in body that receive a tracked transaction
+// from a call, each with its innermost enclosing loop. Nested function literals
+// are their own scope.
+func collectBegins(info *types.Info, body *ast.BlockStmt) []begin {
+	var begins []begin
+	var walk func(root, loop ast.Node)
+	walk = func(root, loop ast.Node) {
+		ast.Inspect(root, func(n ast.Node) bool {
+			if n == root {
+				return true
+			}
+			switch node := n.(type) {
+			case *ast.FuncLit:
+				return false
+			case *ast.ForStmt, *ast.RangeStmt:
+				walk(node, node)
+				return false
+			case *ast.AssignStmt:
+				begins = appendBegins(begins, loop, beginTargets(info, identsOf(node.Lhs), node.Rhs))
+			case *ast.ValueSpec:
+				begins = appendBegins(begins, loop, beginTargets(info, node.Names, node.Values))
+			}
+			return true
+		})
+	}
+	walk(body, nil)
+	return begins
+}
+
+func appendBegins(begins []begin, loop ast.Node, ids []*ast.Ident) []begin {
+	for _, id := range ids {
+		begins = append(begins, begin{id: id, loop: loop})
+	}
 	return begins
 }
 
