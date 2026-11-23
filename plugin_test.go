@@ -17,6 +17,8 @@ import (
 const analyzerName = "nolateexport"
 
 const (
+	elseIfElseKey   = "elseifelse"
+	enabledKey      = "enabled"
 	ifaceNameKey    = "ifacename"
 	handlerIface    = "Handler"
 	maxBoolOpsKey   = "maxboolops"
@@ -137,6 +139,56 @@ func TestDecodeConfigMaxRejectsNegative(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDecodeConfigElseIfElse(t *testing.T) {
+	t.Run("enabled turns the analyzer on", func(t *testing.T) {
+		got, err := decodeConfig(map[string]any{elseIfElseKey: map[string]any{enabledKey: true}})
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		if !got.elseifelse {
+			t.Errorf("decodeConfig() = %+v, want elseifelse=true", got)
+		}
+	})
+
+	t.Run("unknown key is rejected", func(t *testing.T) {
+		_, err := decodeConfig(map[string]any{elseIfElseKey: map[string]any{"enable": true}})
+		if err == nil {
+			t.Fatal("decodeConfig() error = nil, want unknown-field error")
+		}
+		if !strings.Contains(err.Error(), "enable") {
+			t.Errorf("error %q does not name the unknown field", err)
+		}
+	})
+}
+
+func TestBuildAnalyzersElseIfElseIsOptIn(t *testing.T) {
+	t.Run("absent by default", func(t *testing.T) {
+		if got := buildAnalyzer(t, nil, elseIfElseKey); got != nil {
+			t.Errorf("BuildAnalyzers() has %s without it being enabled", got.Name)
+		}
+	})
+
+	t.Run("absent when disabled explicitly", func(t *testing.T) {
+		conf := map[string]any{elseIfElseKey: map[string]any{enabledKey: false}}
+		if got := buildAnalyzer(t, conf, elseIfElseKey); got != nil {
+			t.Errorf("BuildAnalyzers() has %s while it is disabled", got.Name)
+		}
+	})
+
+	t.Run("present and working when enabled", func(t *testing.T) {
+		conf := map[string]any{elseIfElseKey: map[string]any{enabledKey: true}}
+		got := buildAnalyzer(t, conf, elseIfElseKey)
+		if got == nil {
+			t.Fatal("BuildAnalyzers() has no elseifelse analyzer")
+		}
+		testdata, err := filepath.Abs(filepath.Join(elseIfElseKey, "testdata"))
+		if err != nil {
+			t.Fatalf("resolving testdata: %v", err)
+		}
+		analysistest.Run(t, testdata, got, "example")
+	})
 }
 
 func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {

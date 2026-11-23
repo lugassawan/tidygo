@@ -9,6 +9,7 @@ import (
 
 	"github.com/lugassawan/tidygo/confusingop"
 	"github.com/lugassawan/tidygo/constcond"
+	"github.com/lugassawan/tidygo/elseifelse"
 	"github.com/lugassawan/tidygo/emptycomment"
 	"github.com/lugassawan/tidygo/emptyfunc"
 	"github.com/lugassawan/tidygo/funcname"
@@ -32,11 +33,17 @@ func init() {
 // settings mirrors the golangci-lint `linters.settings.custom.tidygo.settings` block.
 // Unknown keys are rejected by register.DecodeSettings, so typos fail loudly.
 type settings struct {
+	ElseIfElse   elseIfElseSettings   `json:"elseifelse"`
 	IfaceName    ifaceNameSettings    `json:"ifacename"`
 	MaxBoolOps   maxSettings          `json:"maxboolops"`
 	MaxCaseLines maxSettings          `json:"maxcaselines"`
 	MaxCases     maxSettings          `json:"maxcases"`
 	NoLateExport noLateExportSettings `json:"nolateexport"`
+}
+
+// elseIfElseSettings switches the opt-in elseifelse analyzer on; it is off by default.
+type elseIfElseSettings struct {
+	Enabled bool `json:"enabled"`
 }
 
 type ifaceNameSettings struct {
@@ -55,6 +62,7 @@ type noLateExportSettings struct {
 
 // config holds the decoded per-analyzer configuration.
 type config struct {
+	elseifelse   bool
 	ifacename    ifacename.Config
 	maxboolops   maxboolops.Config
 	maxcaselines maxcaselines.Config
@@ -63,6 +71,7 @@ type config struct {
 }
 
 type plugin struct {
+	elseifelse   bool
 	ifacename    *analysis.Analyzer
 	maxboolops   *analysis.Analyzer
 	maxcaselines *analysis.Analyzer
@@ -71,7 +80,7 @@ type plugin struct {
 }
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
-	return []*analysis.Analyzer{
+	analyzers := []*analysis.Analyzer{
 		confusingop.Analyzer,
 		constcond.Analyzer,
 		emptycomment.Analyzer,
@@ -88,7 +97,12 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		nolocalstruct.Analyzer,
 		nonestedswitch.Analyzer,
 		redundantparen.Analyzer,
-	}, nil
+	}
+	// elseifelse is opt-in: it stays out of the build unless `elseifelse.enabled` is set.
+	if p.elseifelse {
+		analyzers = append(analyzers, elseifelse.Analyzer)
+	}
+	return analyzers, nil
 }
 
 func (p *plugin) GetLoadMode() string {
@@ -101,6 +115,7 @@ func newPlugin(conf any) (register.LinterPlugin, error) {
 		return nil, err
 	}
 	return &plugin{
+		elseifelse:   cfg.elseifelse,
 		ifacename:    ifacename.New(cfg.ifacename),
 		maxboolops:   maxboolops.New(cfg.maxboolops),
 		maxcaselines: maxcaselines.New(cfg.maxcaselines),
@@ -136,6 +151,7 @@ func decodeConfig(conf any) (config, error) {
 		return config{}, err
 	}
 	return config{
+		elseifelse:   s.ElseIfElse.Enabled,
 		ifacename:    ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
 		maxboolops:   maxboolops.Config{Max: s.MaxBoolOps.Max},
 		maxcaselines: maxcaselines.Config{Max: s.MaxCaseLines.Max},
