@@ -18,3 +18,10 @@ var fn = func() {
 	type InLiteral struct{ y int } // want `named struct type "InLiteral" should be declared at package level, not inside a function`
 	_ = InLiteral{}
 }
+
+func closureInFunc() {
+	_ = func() {
+		type InNested struct{ z int } // want `named struct type "InNested" should be declared at package level, not inside a function`
+		_ = InNested{}
+	}
+}

@@ -25,38 +25,18 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil //nolint:nilnil // analysis framework guarantees type
 	}
 
-	// Visit function declarations and function literals.
-	nodeFilter := []ast.Node{
-		(*ast.FuncDecl)(nil),
-		(*ast.FuncLit)(nil),
-	}
+	// A DeclStmt only occurs inside a function body, so filtering on it visits
+	// every local declaration exactly once, including those in nested literals.
+	nodeFilter := []ast.Node{(*ast.DeclStmt)(nil)}
 
 	insp.Preorder(nodeFilter, func(n ast.Node) {
-		var body *ast.BlockStmt
-		switch fn := n.(type) {
-		case *ast.FuncDecl:
-			body = fn.Body
-		case *ast.FuncLit:
-			body = fn.Body
-		}
-		if body == nil {
-			return
-		}
-		checkBlock(pass, body)
-	})
-
-	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
-}
-
-func checkBlock(pass *analysis.Pass, block *ast.BlockStmt) {
-	ast.Inspect(block, func(n ast.Node) bool {
 		ds, ok := n.(*ast.DeclStmt)
 		if !ok {
-			return true
+			return
 		}
 		gd, ok := ds.Decl.(*ast.GenDecl)
 		if !ok || gd.Tok != token.TYPE {
-			return true
+			return
 		}
 		for _, spec := range gd.Specs {
 			ts, ok := spec.(*ast.TypeSpec)
@@ -71,6 +51,7 @@ func checkBlock(pass *analysis.Pass, block *ast.BlockStmt) {
 				)
 			}
 		}
-		return true
 	})
+
+	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
 }
