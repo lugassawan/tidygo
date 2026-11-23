@@ -14,6 +14,8 @@ import (
 	"go/ast"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/lugassawan/tidygo/internal/receiver"
 )
 
 // Config controls the optional behaviour of the analyzer.
@@ -81,7 +83,7 @@ func (s *fileState) checkMethod(pass *analysis.Pass, cfg Config, fn *ast.FuncDec
 	if len(fn.Recv.List) == 0 {
 		return
 	}
-	typ := recvTypeName(fn.Recv.List[0].Type)
+	typ := receiver.TypeName(fn.Recv.List[0].Type)
 	if typ == "" {
 		return // unresolvable receiver: skip rather than conflate unrelated types under one key
 	}
@@ -95,26 +97,5 @@ func (s *fileState) checkMethod(pass *analysis.Pass, cfg Config, fn *ast.FuncDec
 		pass.Reportf(fn.Pos(), "exported method %s.%s should appear before unexported methods of %s", typ, name, typ)
 	case cfg.UnexportedFuncsLast && s.seenUnexportedFunc:
 		pass.Reportf(fn.Pos(), "exported method %s.%s should appear before unexported standalone functions", typ, name)
-	}
-}
-
-// recvTypeName returns the base type name of a receiver expression, unwrapping
-// pointers, parentheses and generic instantiations (T, *T, T[K], *T[K, V]).
-func recvTypeName(expr ast.Expr) string {
-	for {
-		switch e := expr.(type) {
-		case *ast.Ident:
-			return e.Name
-		case *ast.StarExpr:
-			expr = e.X
-		case *ast.ParenExpr:
-			expr = e.X
-		case *ast.IndexExpr:
-			expr = e.X
-		case *ast.IndexListExpr:
-			expr = e.X
-		default:
-			return ""
-		}
 	}
 }

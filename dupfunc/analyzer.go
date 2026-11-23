@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/lugassawan/tidygo/internal/receiver"
 )
 
 // DefaultMinStmts is the smallest number of top-level statements a body needs to
@@ -182,29 +184,12 @@ func funcName(fd *ast.FuncDecl) string {
 	if fd.Recv == nil || len(fd.Recv.List) == 0 {
 		return fd.Name.Name
 	}
-	recv := recvTypeName(fd.Recv.List[0].Type)
-	// Defensive: a receiver that parses always resolves to a name, so this is
-	// only a guard against a malformed tree producing ".name".
+	recv := receiver.TypeName(fd.Recv.List[0].Type)
+	// A receiver the parser accepts but the type checker would reject (a
+	// qualified pkg.T) has no local type name; fall back to the bare name
+	// instead of rendering ".name".
 	if recv == "" {
 		return fd.Name.Name
 	}
 	return recv + "." + fd.Name.Name
-}
-
-// recvTypeName returns the base type name of a receiver, looking through
-// pointers, parentheses and type parameters.
-func recvTypeName(e ast.Expr) string {
-	switch t := e.(type) {
-	case *ast.Ident:
-		return t.Name
-	case *ast.StarExpr:
-		return recvTypeName(t.X)
-	case *ast.ParenExpr:
-		return recvTypeName(t.X)
-	case *ast.IndexExpr:
-		return recvTypeName(t.X)
-	case *ast.IndexListExpr:
-		return recvTypeName(t.X)
-	}
-	return ""
 }
