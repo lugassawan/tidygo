@@ -159,24 +159,7 @@ func TestDecodeConfigMaxCaseLines(t *testing.T) {
 	})
 }
 
-func TestBuildAnalyzersIncludesIfinitonly(t *testing.T) {
-	p, err := newPlugin(nil)
-	if err != nil {
-		t.Fatalf("newPlugin() error = %v", err)
-	}
-	analyzers, err := p.BuildAnalyzers()
-	if err != nil {
-		t.Fatalf("BuildAnalyzers() error = %v", err)
-	}
-	for _, a := range analyzers {
-		if a.Name == "ifinitonly" {
-			return
-		}
-	}
-	t.Fatal("BuildAnalyzers() has no ifinitonly analyzer")
-}
-
-func TestBuildAnalyzersIncludesHygieneAnalyzers(t *testing.T) {
+func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
 	p, err := newPlugin(nil)
 	if err != nil {
 		t.Fatalf("newPlugin() error = %v", err)
@@ -189,30 +172,20 @@ func TestBuildAnalyzersIncludesHygieneAnalyzers(t *testing.T) {
 	for _, a := range analyzers {
 		registered[a.Name] = true
 	}
-	for _, name := range []string{"confusingop", "constcond", "emptycomment", "emptyfunc"} {
+	for _, name := range []string{
+		"confusingop",
+		"constcond",
+		"emptycomment",
+		"emptyfunc",
+		"ifinitonly",
+		"nonestedswitch",
+	} {
 		t.Run(name, func(t *testing.T) {
 			if !registered[name] {
-				t.Fatalf("BuildAnalyzers() has no %s analyzer", name)
+				t.Errorf("BuildAnalyzers() has no %s analyzer", name)
 			}
 		})
 	}
-}
-
-func TestBuildAnalyzersIncludesNoNestedSwitch(t *testing.T) {
-	p, err := newPlugin(nil)
-	if err != nil {
-		t.Fatalf("newPlugin() error = %v", err)
-	}
-	analyzers, err := p.BuildAnalyzers()
-	if err != nil {
-		t.Fatalf("BuildAnalyzers() error = %v", err)
-	}
-	for _, a := range analyzers {
-		if a.Name == "nonestedswitch" {
-			return
-		}
-	}
-	t.Fatal("BuildAnalyzers() has no nonestedswitch analyzer")
 }
 
 func TestNewPluginPropagatesDecodeError(t *testing.T) {
