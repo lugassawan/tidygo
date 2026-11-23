@@ -38,7 +38,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `nolocalstruct` | Forbids named struct type declarations inside function bodies (optionally interfaces and defined types too) |
 | `nonestedswitch` | Forbids a `switch` or type switch nested inside another `switch` or type switch |
 | `txrollback` | Requires a `*sql.Tx` to have a `defer tx.Rollback()` in the function that begins it |
-| `weakpwhash` | Reports password hashing (pbkdf2, scrypt, argon2, bcrypt) with a constant salt or a constant cost below the recommended minimum |
+| `weakpwhash` | Reports password hashing (pbkdf2, scrypt, argon2, bcrypt) with a constant salt or a constant cost below a conservative floor |
 
 ## Installation
 

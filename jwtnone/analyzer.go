@@ -55,11 +55,12 @@ func run(pass *analysis.Pass) (any, error) {
 		if !ok {
 			return
 		}
-		obj := pass.TypesInfo.Uses[id]
-		if obj == nil || obj.Pkg() == nil || !slices.Contains(jwtPackages, obj.Pkg().Path()) {
+		msg, found := messages[id.Name]
+		if !found || pass.TypesInfo == nil {
 			return
 		}
-		if msg, found := messages[obj.Name()]; found {
+		obj := pass.TypesInfo.Uses[id]
+		if obj != nil && obj.Pkg() != nil && slices.Contains(jwtPackages, obj.Pkg().Path()) {
 			pass.Reportf(id.Pos(), "%s", msg)
 		}
 	})

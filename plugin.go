@@ -126,11 +126,10 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	}, nil
 }
 
-// GetLoadMode asks for type information: deferredcancel, txrollback, busywait,
-// atomiccreate, aeadcipher, jwtnone and weakpwhash resolve callees and
-// identifiers through pass.TypesInfo. golangci-lint skips every analyzer on a
-// package that fails to type-check, so the syntax-only analyzers go quiet on
-// non-compiling code too.
+// GetLoadMode asks for type information, because the callee-resolving analyzers
+// read pass.TypesInfo. golangci-lint skips every analyzer on a package that
+// fails to type-check, so the syntax-only analyzers go quiet on non-compiling
+// code too.
 func (p *plugin) GetLoadMode() string {
 	return register.LoadModeTypesInfo
 }

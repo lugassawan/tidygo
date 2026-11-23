@@ -378,7 +378,7 @@ parser := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"}))
 
 ### Known limitations
 
-- Every reference is reported, including defensive ones such as `if tok.Method == jwt.SigningMethodNone { reject }` or a test asserting that a none token is rejected. Suppress those with `//nolint:tidygo // reason`.
+- Every reference is reported, including defensive ones such as `if tok.Method == jwt.SigningMethodNone { reject }` or a test asserting that a none token is rejected. Suppress those with `//nolint:tidygo // reason`, or exclude `_test.go` files with a `linters.exclusions` rule.
 - Only references to the two identifiers are reported. A parser that accepts any algorithm because it has no `WithValidMethods` check is not detected, and neither is a runtime `alg` header check.
 - Other JWT libraries (`lestrrat-go/jwx`, `golang-jwt/jwt` v3) are not covered.
 
@@ -799,7 +799,7 @@ A transaction that escapes the function is skipped, because the caller owns it: 
 
 ## weakpwhash
 
-Reports password-hashing calls with a constant salt or a constant work factor below the current guidance. A constant salt lets one precomputed table attack every password at once, and a low cost makes brute force cheap. The thresholds are fixed:
+Reports password-hashing calls with a constant salt or a constant work factor below a conservative floor. A constant salt lets one precomputed table attack every password at once, and a low cost makes brute force cheap. The floors are fixed and deliberately lenient (OWASP recommends 600,000 PBKDF2-HMAC-SHA256 iterations, for example), so they catch clearly weak settings rather than certify strong ones:
 
 | Call | Salt checked | Reported when |
 |---|---|---|
@@ -817,7 +817,9 @@ hash, err := bcrypt.GenerateFromPassword(pw, 6)
 
 // Good
 salt := make([]byte, 16)
-_, _ = rand.Read(salt)
+if _, err := rand.Read(salt); err != nil {
+	return err
+}
 key := argon2.IDKey(pw, salt, 2, 19*1024, 1, 32)
 hash, err := bcrypt.GenerateFromPassword(pw, bcrypt.DefaultCost)
 ```
@@ -826,7 +828,8 @@ hash, err := bcrypt.GenerateFromPassword(pw, bcrypt.DefaultCost)
 
 - Variables are not followed: `salt := []byte("static")` followed by `Key(pw, salt, ...)` is not reported, only a constant written at the call.
 - A cost that is not a compile-time constant (a variable, a field or a configuration value) is skipped.
-- Only the argon2 memory parameter is checked, not its time and thread counts; for scrypt only N is checked, not r and p.
+- Only the argon2 memory parameter is checked, not its time and thread counts; for scrypt only N is checked, not r and p. A deliberate memory-for-time trade (for example argon2 with 12 MiB and 3 passes) is therefore still reported; suppress it with `//nolint:tidygo // reason`.
+- Test files are checked like any other file, so `bcrypt.GenerateFromPassword(pw, bcrypt.MinCost)` (the usual bcrypt test speed-up) and known-answer tests with a fixed salt are reported. Suppress them with `//nolint:tidygo // reason` or a `linters.exclusions` rule for `_test.go` files.
 - Other password-hashing libraries (`alexedwards/argon2id`, `pbkdf2` wrappers) are not covered.
 
 This analyzer has no options.

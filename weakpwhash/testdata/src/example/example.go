@@ -56,9 +56,10 @@ func argon2Keys(pw, salt []byte, mem uint32) {
 }
 
 func bcryptCost(pw []byte, cost int) {
-	_, _ = bcrypt.GenerateFromPassword(pw, 4)  // want `bcrypt.GenerateFromPassword cost 4 is below the minimum 10`
-	_, _ = bcrypt.GenerateFromPassword(pw, 9)  // want `bcrypt.GenerateFromPassword cost 9 is below the minimum 10`
-	_, _ = bcrypt.GenerateFromPassword(pw, 10) // at the floor
+	_, _ = bcrypt.GenerateFromPassword(pw, 4)              // want `GenerateFromPassword cost 4 is below the minimum 10`
+	_, _ = bcrypt.GenerateFromPassword(pw, 9)              // want `GenerateFromPassword cost 9 is below the minimum 10`
+	_, _ = bcrypt.GenerateFromPassword(pw, 10)             // at the floor
+	_, _ = bcrypt.GenerateFromPassword(pw, bcrypt.MinCost) // want `cost 4 is below`
 	_, _ = bcrypt.GenerateFromPassword(pw, bcrypt.DefaultCost)
 	_, _ = bcrypt.GenerateFromPassword(pw, 0) // bcrypt substitutes DefaultCost
 	_, _ = bcrypt.GenerateFromPassword(pw, 3) // bcrypt substitutes DefaultCost
