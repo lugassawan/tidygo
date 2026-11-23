@@ -54,7 +54,7 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 // boolLiteral returns "true" or "false" when cond, ignoring parentheses, is
-// that identifier. The plugin runs without type information, so it matches on
+// that identifier. The analyzer uses no type information, so it matches on
 // the name only: a shadowed true or false is still reported.
 func boolLiteral(cond ast.Expr) (string, bool) {
 	if cond == nil {

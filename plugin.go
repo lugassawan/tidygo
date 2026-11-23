@@ -7,8 +7,11 @@ import (
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/lugassawan/tidygo/atomiccreate"
+	"github.com/lugassawan/tidygo/busywait"
 	"github.com/lugassawan/tidygo/confusingop"
 	"github.com/lugassawan/tidygo/constcond"
+	"github.com/lugassawan/tidygo/deferredcancel"
 	"github.com/lugassawan/tidygo/dupfunc"
 	"github.com/lugassawan/tidygo/elseifelse"
 	"github.com/lugassawan/tidygo/emptycomment"
@@ -20,12 +23,14 @@ import (
 	"github.com/lugassawan/tidygo/maxcaselines"
 	"github.com/lugassawan/tidygo/maxcases"
 	"github.com/lugassawan/tidygo/maxparams"
+	"github.com/lugassawan/tidygo/methodcolocation"
 	"github.com/lugassawan/tidygo/noanonnested"
 	"github.com/lugassawan/tidygo/nolateconst"
 	"github.com/lugassawan/tidygo/nolateexport"
 	"github.com/lugassawan/tidygo/nolocalstruct"
 	"github.com/lugassawan/tidygo/nonestedswitch"
 	"github.com/lugassawan/tidygo/redundantparen"
+	"github.com/lugassawan/tidygo/txrollback"
 )
 
 func init() {
@@ -35,16 +40,17 @@ func init() {
 // settings mirrors the golangci-lint `linters.settings.custom.tidygo.settings` block.
 // Unknown keys are rejected by register.DecodeSettings, so typos fail loudly.
 type settings struct {
-	DupFunc       dupFuncSettings       `json:"dupfunc"`
-	ElseIfElse    elseIfElseSettings    `json:"elseifelse"`
-	FuncName      funcNameSettings      `json:"funcname"`
-	IfaceName     ifaceNameSettings     `json:"ifacename"`
-	MaxBoolOps    maxSettings           `json:"maxboolops"`
-	MaxCaseLines  maxSettings           `json:"maxcaselines"`
-	MaxCases      maxSettings           `json:"maxcases"`
-	NoAnonNested  maxSettings           `json:"noanonnested"`
-	NoLateExport  noLateExportSettings  `json:"nolateexport"`
-	NoLocalStruct noLocalStructSettings `json:"nolocalstruct"`
+	DupFunc          dupFuncSettings          `json:"dupfunc"`
+	ElseIfElse       elseIfElseSettings       `json:"elseifelse"`
+	FuncName         funcNameSettings         `json:"funcname"`
+	IfaceName        ifaceNameSettings        `json:"ifacename"`
+	MaxBoolOps       maxSettings              `json:"maxboolops"`
+	MaxCaseLines     maxSettings              `json:"maxcaselines"`
+	MaxCases         maxSettings              `json:"maxcases"`
+	MethodColocation methodColocationSettings `json:"methodcolocation"`
+	NoAnonNested     maxSettings              `json:"noanonnested"`
+	NoLateExport     noLateExportSettings     `json:"nolateexport"`
+	NoLocalStruct    noLocalStructSettings    `json:"nolocalstruct"`
 }
 
 type funcNameSettings struct {
@@ -71,6 +77,10 @@ type maxSettings struct {
 	Max int `json:"max"`
 }
 
+type methodColocationSettings struct {
+	AllowFileSuffix bool `json:"allow-file-suffix"`
+}
+
 type noLateExportSettings struct {
 	UnexportedFuncsLast bool `json:"unexported-funcs-last"`
 }
@@ -81,35 +91,40 @@ type noLocalStructSettings struct {
 
 // config holds the decoded per-analyzer configuration.
 type config struct {
-	dupfunc       dupfunc.Config
-	elseifelse    bool
-	funcname      funcname.Config
-	ifacename     ifacename.Config
-	maxboolops    maxboolops.Config
-	maxcaselines  maxcaselines.Config
-	maxcases      maxcases.Config
-	noanonnested  noanonnested.Config
-	nolateexport  nolateexport.Config
-	nolocalstruct nolocalstruct.Config
+	dupfunc          dupfunc.Config
+	elseifelse       bool
+	funcname         funcname.Config
+	ifacename        ifacename.Config
+	maxboolops       maxboolops.Config
+	maxcaselines     maxcaselines.Config
+	maxcases         maxcases.Config
+	methodcolocation methodcolocation.Config
+	noanonnested     noanonnested.Config
+	nolateexport     nolateexport.Config
+	nolocalstruct    nolocalstruct.Config
 }
 
 type plugin struct {
-	dupfunc       *analysis.Analyzer
-	elseifelse    bool
-	funcname      *analysis.Analyzer
-	ifacename     *analysis.Analyzer
-	maxboolops    *analysis.Analyzer
-	maxcaselines  *analysis.Analyzer
-	maxcases      *analysis.Analyzer
-	noanonnested  *analysis.Analyzer
-	nolateexport  *analysis.Analyzer
-	nolocalstruct *analysis.Analyzer
+	dupfunc          *analysis.Analyzer
+	elseifelse       bool
+	funcname         *analysis.Analyzer
+	ifacename        *analysis.Analyzer
+	maxboolops       *analysis.Analyzer
+	maxcaselines     *analysis.Analyzer
+	maxcases         *analysis.Analyzer
+	methodcolocation *analysis.Analyzer
+	noanonnested     *analysis.Analyzer
+	nolateexport     *analysis.Analyzer
+	nolocalstruct    *analysis.Analyzer
 }
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	analyzers := []*analysis.Analyzer{
+		atomiccreate.Analyzer,
+		busywait.Analyzer,
 		confusingop.Analyzer,
 		constcond.Analyzer,
+		deferredcancel.Analyzer,
 		p.dupfunc,
 		emptycomment.Analyzer,
 		emptyfunc.Analyzer,
@@ -120,12 +135,14 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		p.maxcaselines,
 		p.maxcases,
 		maxparams.Analyzer,
+		p.methodcolocation,
 		nolateconst.Analyzer,
 		p.nolateexport,
 		p.noanonnested,
 		p.nolocalstruct,
 		nonestedswitch.Analyzer,
 		redundantparen.Analyzer,
+		txrollback.Analyzer,
 	}
 	// elseifelse is opt-in: it stays out of the build unless `elseifelse.enabled` is set.
 	if p.elseifelse {
@@ -134,8 +151,12 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return analyzers, nil
 }
 
+// GetLoadMode asks for type information: deferredcancel, txrollback, busywait and
+// atomiccreate resolve callees through pass.TypesInfo. golangci-lint skips every
+// analyzer on a package that fails to type-check, so the syntax-only analyzers go
+// quiet on non-compiling code too.
 func (p *plugin) GetLoadMode() string {
-	return register.LoadModeSyntax
+	return register.LoadModeTypesInfo
 }
 
 func newPlugin(conf any) (register.LinterPlugin, error) {
@@ -144,16 +165,17 @@ func newPlugin(conf any) (register.LinterPlugin, error) {
 		return nil, err
 	}
 	return &plugin{
-		dupfunc:       dupfunc.New(cfg.dupfunc),
-		elseifelse:    cfg.elseifelse,
-		funcname:      funcname.New(cfg.funcname),
-		ifacename:     ifacename.New(cfg.ifacename),
-		maxboolops:    maxboolops.New(cfg.maxboolops),
-		maxcaselines:  maxcaselines.New(cfg.maxcaselines),
-		maxcases:      maxcases.New(cfg.maxcases),
-		noanonnested:  noanonnested.New(cfg.noanonnested),
-		nolateexport:  nolateexport.New(cfg.nolateexport),
-		nolocalstruct: nolocalstruct.New(cfg.nolocalstruct),
+		dupfunc:          dupfunc.New(cfg.dupfunc),
+		elseifelse:       cfg.elseifelse,
+		funcname:         funcname.New(cfg.funcname),
+		ifacename:        ifacename.New(cfg.ifacename),
+		maxboolops:       maxboolops.New(cfg.maxboolops),
+		maxcaselines:     maxcaselines.New(cfg.maxcaselines),
+		maxcases:         maxcases.New(cfg.maxcases),
+		methodcolocation: methodcolocation.New(cfg.methodcolocation),
+		noanonnested:     noanonnested.New(cfg.noanonnested),
+		nolateexport:     nolateexport.New(cfg.nolateexport),
+		nolocalstruct:    nolocalstruct.New(cfg.nolocalstruct),
 	}, nil
 }
 
@@ -196,15 +218,16 @@ func decodeConfig(conf any) (config, error) {
 		return config{}, err
 	}
 	return config{
-		dupfunc:       dupfunc.Config{MinStmts: s.DupFunc.MinStatements},
-		elseifelse:    s.ElseIfElse.Enabled,
-		funcname:      funcname.Config{IncludeVars: s.FuncName.IncludeVars},
-		ifacename:     ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
-		maxboolops:    maxboolops.Config{Max: s.MaxBoolOps.Max},
-		maxcaselines:  maxcaselines.Config{Max: s.MaxCaseLines.Max},
-		maxcases:      maxcases.Config{Max: s.MaxCases.Max},
-		noanonnested:  noanonnested.Config{Max: s.NoAnonNested.Max},
-		nolateexport:  nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast},
-		nolocalstruct: nolocalstruct.Config{AllTypes: s.NoLocalStruct.AllTypes},
+		dupfunc:          dupfunc.Config{MinStmts: s.DupFunc.MinStatements},
+		elseifelse:       s.ElseIfElse.Enabled,
+		funcname:         funcname.Config{IncludeVars: s.FuncName.IncludeVars},
+		ifacename:        ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
+		maxboolops:       maxboolops.Config{Max: s.MaxBoolOps.Max},
+		maxcaselines:     maxcaselines.Config{Max: s.MaxCaseLines.Max},
+		maxcases:         maxcases.Config{Max: s.MaxCases.Max},
+		methodcolocation: methodcolocation.Config{AllowFileSuffix: s.MethodColocation.AllowFileSuffix},
+		noanonnested:     noanonnested.Config{Max: s.NoAnonNested.Max},
+		nolateexport:     nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast},
+		nolocalstruct:    nolocalstruct.Config{AllTypes: s.NoLocalStruct.AllTypes},
 	}, nil
 }
