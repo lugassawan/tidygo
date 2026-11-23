@@ -17,6 +17,7 @@ jobs:
     name: Detect Changes
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      scripts: ${{ steps.filter.outputs.scripts }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,6 +33,20 @@ jobs:
               - ".custom-gcl.yml"
               - ".golangci.yml"
               - ".github/workflows/test.yml"
+            scripts:
+              - ".github/scripts/**"
+              - ".github/workflows/test.yml"
+
+  scripts:
+    needs: changes
+    if: needs.changes.outputs.scripts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint shell scripts
+        run: shellcheck .github/scripts/*.sh
+      - name: Test release notes script
+        run: sh .github/scripts/release-notes_test.sh
 
   lint:
     needs: changes
@@ -79,7 +94,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     name: CI
-    needs: [lint, test, coverage]
+    needs: [lint, test, coverage, scripts]
     if: always()
     steps:
       - name: Check results
@@ -87,8 +102,9 @@ jobs:
           LINT: ${{ needs.lint.result }}
           TEST: ${{ needs.test.result }}
           COVERAGE: ${{ needs.coverage.result }}
+          SCRIPTS: ${{ needs.scripts.result }}
         run: |
-          for r in "$LINT" "$TEST" "$COVERAGE"; do
+          for r in "$LINT" "$TEST" "$COVERAGE" "$SCRIPTS"; do
             if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
               echo "Job failed with result: $r"
               exit 1
