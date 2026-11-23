@@ -265,7 +265,75 @@ func shortCircuitLeft(flag bool) {
 	}
 }
 
+// A field named n, or a shadowing closure param, in a lazy position must not hide the report.
+
+func selectorInLazyOperand(x T) {
+	if n := f(); n > 0 && x.n > 0 { // want `variable "n" in if init is only used in the condition`
+	}
+}
+
+func selectorInOrOperand(x T) {
+	if n := f(); n > 0 || x.n > 0 { // want `variable "n" in if init is only used in the condition`
+	}
+}
+
+func shadowingClosureInLazyOperand() {
+	if n := f(); n > 0 &&
+		func(n int) bool { return n > 1 }(2) { // want `variable "n" in if init is only used in the condition`
+	}
+}
+
+func structFieldInLazyClosure() {
+	if n := f(); n > 0 &&
+		func() bool { var s struct{ n int }; return s.n == 0 }() { // want `variable "n" in if init is only used in the condition`
+	}
+}
+
+func typeSwitchInitShadows(v any) {
+	if n := f(); n > 0 { // want `variable "n" in if init is only used in the condition`
+		switch n := f(); v.(type) {
+		case int:
+			use(n)
+		}
+	}
+}
+
+func elseIfOwnInitReported() {
+	if n := f(); n > 0 {
+		use(n)
+	} else if m := f(); m > 0 { // want `variable "m" in if init is only used in the condition`
+	}
+}
+
 // ---- not reported: more uses of the outer variable ----
+
+func typeSwitchBodyUsesOuter(v any) {
+	if n := f(); n > 0 {
+		switch m := v.(type) {
+		case int:
+			use(m, n)
+		}
+	}
+}
+
+func selectBodyUsesOuter(ch chan int) {
+	if n := f(); n > 0 {
+		select {
+		case v := <-ch:
+			use(v, n)
+		}
+	}
+}
+
+func orRightOperand(flag bool) {
+	if n := f(); flag || n > 0 {
+	}
+}
+
+func addressTakenInParens() {
+	if n := f(); take(&(n)) {
+	}
+}
 
 func caseBodyUses(x int) {
 	if n := f(); n > 0 {

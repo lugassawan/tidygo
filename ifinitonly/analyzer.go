@@ -58,75 +58,12 @@ func initVar(ifs *ast.IfStmt) (*ast.Ident, bool) {
 }
 
 // onlyInCond reports whether name is referenced exactly once, in the condition,
-// and nowhere in the body or else branch. Several references in the condition
-// are kept, because inlining would evaluate the initializer more than once.
-// A reference under `&` is kept too, because `&f()` is not valid Go, and so is
-// one whose evaluation inlining would change (see changesEvaluation).
+// and nowhere in the body or else branch. That one reference must also be safe
+// to inline: not under `&`, and not conditional or repeated (right of &&/||,
+// inside a function literal).
 func onlyInCond(ifs *ast.IfStmt, name string) bool {
-	return countRefs(ifs.Cond, name) == 1 &&
-		countRefs(ifs.Body, name) == 0 &&
-		countRefs(ifs.Else, name) == 0 &&
-		!addressTaken(ifs.Cond, name) &&
-		!changesEvaluation(ifs.Cond, name)
-}
-
-// changesEvaluation reports whether a reference to name in cond sits where
-// inlining the initializer would run it a different number of times: inside a
-// function literal (once per call) or in the right operand of && or ||
-// (skipped when the left operand short-circuits).
-func changesEvaluation(cond ast.Expr, name string) bool {
-	var path []ast.Node
-	found := false
-	ast.Inspect(cond, func(n ast.Node) bool {
-		if n == nil {
-			path = path[:len(path)-1]
-			return false
-		}
-		path = append(path, n)
-		if isIdentNamed(exprOf(n), name) {
-			found = found || runsConditionally(path)
-		}
-		return !found
-	})
-	return found
-}
-
-// runsConditionally reports whether the last node of path is evaluated
-// lazily or repeatedly relative to the start of the path.
-func runsConditionally(path []ast.Node) bool {
-	for i := len(path) - 1; i > 0; i-- {
-		switch p := path[i-1].(type) {
-		case *ast.FuncLit:
-			return true
-		case *ast.BinaryExpr:
-			if (p.Op == token.LAND || p.Op == token.LOR) && ast.Node(p.Y) == path[i] {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// exprOf returns n as an expression, or nil when it is not one.
-func exprOf(n ast.Node) ast.Expr {
-	e, _ := n.(ast.Expr)
-	return e
-}
-
-// addressTaken reports whether the condition contains `&name`.
-func addressTaken(cond ast.Expr, name string) bool {
-	found := false
-	ast.Inspect(cond, func(n ast.Node) bool {
-		u, ok := n.(*ast.UnaryExpr)
-		if ok && u.Op == token.AND {
-			found = found || isIdentNamed(ast.Unparen(u.X), name)
-		}
-		return !found
-	})
-	return found
-}
-
-func isIdentNamed(e ast.Expr, name string) bool {
-	id, ok := e.(*ast.Ident)
-	return ok && id.Name == name
+	cond := scanRefs(ifs.Cond, name)
+	return cond.count == 1 && cond.lazy == 0 && !cond.addr &&
+		scanRefs(ifs.Body, name).count == 0 &&
+		scanRefs(ifs.Else, name).count == 0
 }

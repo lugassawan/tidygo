@@ -48,7 +48,7 @@ Inlining is a suggestion, and the analyzer cannot prove it is always safe withou
 
 It cannot see these, so check them before inlining:
 
-- Evaluation order: in `if n := f(); g() > n`, inlining makes `g()` run before `f()`.
+- Evaluation order: in `if n := f(); g() > n`, inlining makes `g()` run before `f()`. This also applies when the initializer only reads mutable state, as in `if n := c.cnt; c.Next() > n`, where inlining reads `c.cnt` after `c.Next()` has run.
 - Addressability: if `n` is the receiver of a pointer-receiver method or is sliced (`n.PtrMethod()`, `n[:2]`), inlining a non-addressable call result may not compile.
 
 Only a single-variable `:=` init is checked. Multi-value inits such as `v, ok := m[k]`, plain assignment (`n = f()`) and other init statement kinds are ignored.
