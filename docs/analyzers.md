@@ -1,5 +1,26 @@
 # Analyzer Details
 
+## aeadcipher
+
+Reports `cipher.NewCBCEncrypter` and `cipher.NewCTR`. CBC and CTR hide the plaintext but do not authenticate the ciphertext, so an attacker who can modify it can flip plaintext bits (CTR) or mount padding-oracle attacks (CBC) without detection. An AEAD such as AES-GCM or ChaCha20-Poly1305 encrypts and authenticates in one step.
+
+The analyzer needs type information, so import aliases and dot imports are matched. `cipher.NewCBCDecrypter` is not reported, because decrypting legacy data needs it. CFB, OFB and RSA PKCS#1 v1.5 are left to staticcheck `SA1019`, which reports them as deprecated.
+
+```go
+// Bad
+stream := cipher.NewCTR(block, iv)
+
+// Good
+aead, err := cipher.NewGCM(block)
+```
+
+### Known limitations
+
+- A CTR or CBC construction that is paired with a separate MAC (encrypt-then-MAC) is still reported; suppress it with `//nolint:tidygo // reason`.
+- Only the `crypto/cipher` constructors are matched. Third-party wrappers around them are not followed.
+
+This analyzer has no options.
+
 ## atomiccreate
 
 Reports a file created after an existence check on the same path. `os.Stat` followed by `os.IsNotExist` and then `os.Create` is a check-then-act race: another process can create the file between the two calls, and `os.Create` (and `os.WriteFile`) truncates whatever is there. `os.OpenFile` with `O_CREATE|O_EXCL` does the check and the create in one atomic step.
@@ -337,6 +358,30 @@ It cannot see these, so check them before inlining:
 Only a single-variable `:=` init is checked. Multi-value inits such as `v, ok := m[k]`, plain assignment (`n = f()`) and other init statement kinds are ignored.
 
 The analyzer runs without type information, so shadowing is resolved syntactically. A redeclaration of the same name in the body (`n := 5`, a closure parameter, a nested `if`/`for`/`switch`/`select` binding) is not counted as a use of the init variable. Where the two cannot be told apart it errs on the side of not reporting. For example, a struct-literal key such as `T{n: 1}` counts as a use, because it could be a map key that reads the variable.
+
+## jwtnone
+
+Reports any reference to `SigningMethodNone` or `UnsafeAllowNoneSignatureType` from `github.com/golang-jwt/jwt/v4`, `github.com/golang-jwt/jwt/v5` or `github.com/dgrijalva/jwt-go`. `SigningMethodNone` signs a token with no signature, and `UnsafeAllowNoneSignatureType` is the key a parser needs to accept one, so either lets an attacker forge claims.
+
+The analyzer needs type information and matches the resolved object, so import aliases and dot imports are covered, while a local identifier with the same name is not.
+
+```go
+// Bad
+token := jwt.NewWithClaims(jwt.SigningMethodNone, claims)
+tokenString, err := token.SignedString(jwt.UnsafeAllowNoneSignatureType)
+
+// Good
+token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+tokenString, err := token.SignedString(secret)
+parser := jwt.NewParser(jwt.WithValidMethods([]string{"HS256"}))
+```
+
+### Known limitations
+
+- Only references to the two identifiers are reported. A parser that accepts any algorithm because it has no `WithValidMethods` check is not detected, and neither is a runtime `alg` header check.
+- Other JWT libraries (`lestrrat-go/jwx`, `golang-jwt/jwt` v3) are not covered.
+
+This analyzer has no options.
 
 ## maxcaselines
 
@@ -750,3 +795,37 @@ A transaction that escapes the function is skipped, because the caller owns it: 
 - A call starts a transaction only when its name begins with `Begin` or `Start`. A getter such as `tx := txFromContext(ctx)` and a type conversion are not reported, but a wrapper with another name (`openTx`, `newUnitOfWork`) is not tracked either, and neither is a call through a function value.
 - A variable assigned from `Begin` twice in one function is reported at each assignment.
 - In a loop, any `Rollback` call on the variable in the loop body is accepted, even one that covers only some of the exits, so an iteration that rolls back on one error path and returns early on another is not reported.
+
+## weakpwhash
+
+Reports password-hashing calls with a constant salt or a constant work factor below the current guidance. A constant salt lets one precomputed table attack every password at once, and a low cost makes brute force cheap. The thresholds are fixed:
+
+| Call | Salt checked | Reported when |
+|---|---|---|
+| `crypto/pbkdf2.Key`, `golang.org/x/crypto/pbkdf2.Key` | yes | iteration count < 100,000 |
+| `golang.org/x/crypto/scrypt.Key` | yes | N < 32,768 (2^15) |
+| `golang.org/x/crypto/argon2.Key`, `IDKey` | yes | memory < 19,456 KiB |
+| `golang.org/x/crypto/bcrypt.GenerateFromPassword` | no | cost 4 to 9 |
+
+The analyzer needs type information. A salt is constant when it is `nil`, a conversion of a constant (`[]byte("salt")`), or a `[]byte{...}` literal whose elements are all constants. bcrypt replaces a cost below `MinCost` (4) with `DefaultCost` (10), so costs 0 to 3 are safe and are not reported.
+
+```go
+// Bad
+key := argon2.IDKey(pw, []byte("static"), 1, 4*1024, 4, 32)
+hash, err := bcrypt.GenerateFromPassword(pw, 6)
+
+// Good
+salt := make([]byte, 16)
+_, _ = rand.Read(salt)
+key := argon2.IDKey(pw, salt, 2, 19*1024, 1, 32)
+hash, err := bcrypt.GenerateFromPassword(pw, bcrypt.DefaultCost)
+```
+
+### Known limitations
+
+- Variables are not followed: `salt := []byte("static")` followed by `Key(pw, salt, ...)` is not reported, only a constant written at the call.
+- A cost that is not a compile-time constant (a variable, a field or a configuration value) is skipped.
+- Only the argon2 memory parameter is checked, not its time and thread counts; for scrypt only N is checked, not r and p.
+- Other password-hashing libraries (`alexedwards/argon2id`, `pbkdf2` wrappers) are not covered.
+
+This analyzer has no options.
