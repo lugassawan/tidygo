@@ -27,12 +27,17 @@ func init() {
 // settings mirrors the golangci-lint `linters.settings.custom.tidygo.settings` block.
 // Unknown keys are rejected by register.DecodeSettings, so typos fail loudly.
 type settings struct {
+	FuncName      funcNameSettings      `json:"funcname"`
 	IfaceName     ifaceNameSettings     `json:"ifacename"`
 	MaxCaseLines  maxSettings           `json:"maxcaselines"`
 	MaxCases      maxSettings           `json:"maxcases"`
 	NoAnonNested  maxSettings           `json:"noanonnested"`
 	NoLateExport  noLateExportSettings  `json:"nolateexport"`
 	NoLocalStruct noLocalStructSettings `json:"nolocalstruct"`
+}
+
+type funcNameSettings struct {
+	IncludeVars bool `json:"include-vars"`
 }
 
 type ifaceNameSettings struct {
@@ -55,6 +60,7 @@ type noLocalStructSettings struct {
 
 // config holds the decoded per-analyzer configuration.
 type config struct {
+	funcname      funcname.Config
 	ifacename     ifacename.Config
 	maxcaselines  maxcaselines.Config
 	maxcases      maxcases.Config
@@ -64,6 +70,7 @@ type config struct {
 }
 
 type plugin struct {
+	funcname      *analysis.Analyzer
 	ifacename     *analysis.Analyzer
 	maxcaselines  *analysis.Analyzer
 	maxcases      *analysis.Analyzer
@@ -74,7 +81,7 @@ type plugin struct {
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return []*analysis.Analyzer{
-		funcname.Analyzer,
+		p.funcname,
 		p.ifacename,
 		ifinitonly.Analyzer,
 		p.maxcaselines,
@@ -98,6 +105,7 @@ func newPlugin(conf any) (register.LinterPlugin, error) {
 		return nil, err
 	}
 	return &plugin{
+		funcname:      funcname.New(cfg.funcname),
 		ifacename:     ifacename.New(cfg.ifacename),
 		maxcaselines:  maxcaselines.New(cfg.maxcaselines),
 		maxcases:      maxcases.New(cfg.maxcases),
@@ -134,6 +142,7 @@ func decodeConfig(conf any) (config, error) {
 		return config{}, err
 	}
 	return config{
+		funcname:      funcname.Config{IncludeVars: s.FuncName.IncludeVars},
 		ifacename:     ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
 		maxcaselines:  maxcaselines.Config{Max: s.MaxCaseLines.Max},
 		maxcases:      maxcases.Config{Max: s.MaxCases.Max},

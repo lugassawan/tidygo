@@ -16,7 +16,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 
 | Analyzer | Description |
 |---|---|
-| `funcname` | Forbids underscores in function and method names |
+| `funcname` | Forbids underscores in function and method names (optionally variables, constants, parameters, results and receivers) |
 | `ifacename` | Requires single-method interfaces to be named after their method plus an agent-noun suffix (`Read` → `Reader`) |
 | `ifinitonly` | Forbids `if` init variables used only in the condition |
 | `maxcaselines` | Forbids `case` clause bodies that span more than 10 lines (configurable) |
@@ -54,6 +54,10 @@ linters:
       tidygo:
         type: "module"
         settings:
+          # Optional: apply the underscore rule to variables, constants, parameters,
+          # results and receivers as well as functions.
+          funcname:
+            include-vars: true
           # Optional: exempt interface names that cannot be derived from their method.
           ifacename:
             allowed-names: [Handler]

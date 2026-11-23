@@ -17,6 +17,7 @@ import (
 const analyzerName = "nolateexport"
 
 const (
+	funcNameKey      = "funcname"
 	ifaceNameKey     = "ifacename"
 	handlerIface     = "Handler"
 	maxCasesKey      = "maxcases"
@@ -368,6 +369,33 @@ func TestNewPluginWiresNoAnonNestedConfigIntoAnalyzer(t *testing.T) {
 		t.Fatalf("resolving testdata: %v", err)
 	}
 	analysistest.Run(t, testdata, got, "custom")
+}
+
+func TestDecodeConfigFuncName(t *testing.T) {
+	t.Run("include-vars reaches the funcname config", func(t *testing.T) {
+		conf := map[string]any{funcNameKey: map[string]any{"include-vars": true}}
+		got, err := decodeConfig(conf)
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		if !got.funcname.IncludeVars {
+			t.Errorf("decodeConfig() funcname = %+v, want IncludeVars=true", got.funcname)
+		}
+	})
+
+	t.Run("unknown funcname key is rejected", func(t *testing.T) {
+		requireUnknownKey(t, map[string]any{funcNameKey: map[string]any{"include-var": true}}, "include-var")
+	})
+}
+
+func TestNewPluginWiresFuncNameConfigIntoAnalyzer(t *testing.T) {
+	got := buildNamed(t, map[string]any{funcNameKey: map[string]any{"include-vars": true}}, funcNameKey)
+	// The includevars package only passes if include-vars reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(funcNameKey, "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "includevars")
 }
 
 // buildNamed builds the plugin from conf and returns the analyzer called name.
