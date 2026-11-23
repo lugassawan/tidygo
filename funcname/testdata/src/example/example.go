@@ -18,5 +18,8 @@ func TestSomething_Case() {} // want `Rename function "TestSomething_Case" to ma
 // T is a dummy type for method tests.
 type T struct{}
 
+// under_score is a variable: not checked unless include-vars is on.
+var under_score = 1
+
 // bad_method is a method with an underscore — want diagnostic.
 func (t T) bad_method() {} // want `Rename function "bad_method" to match the regular expression \^`

@@ -17,6 +17,7 @@ import (
 	"github.com/lugassawan/tidygo/maxcaselines"
 	"github.com/lugassawan/tidygo/maxcases"
 	"github.com/lugassawan/tidygo/maxparams"
+	"github.com/lugassawan/tidygo/noanonnested"
 	"github.com/lugassawan/tidygo/nolateconst"
 	"github.com/lugassawan/tidygo/nolateexport"
 	"github.com/lugassawan/tidygo/nolocalstruct"
@@ -30,10 +31,17 @@ func init() {
 // settings mirrors the golangci-lint `linters.settings.custom.tidygo.settings` block.
 // Unknown keys are rejected by register.DecodeSettings, so typos fail loudly.
 type settings struct {
-	IfaceName    ifaceNameSettings    `json:"ifacename"`
-	MaxCaseLines maxSettings          `json:"maxcaselines"`
-	MaxCases     maxSettings          `json:"maxcases"`
-	NoLateExport noLateExportSettings `json:"nolateexport"`
+	FuncName      funcNameSettings      `json:"funcname"`
+	IfaceName     ifaceNameSettings     `json:"ifacename"`
+	MaxCaseLines  maxSettings           `json:"maxcaselines"`
+	MaxCases      maxSettings           `json:"maxcases"`
+	NoAnonNested  maxSettings           `json:"noanonnested"`
+	NoLateExport  noLateExportSettings  `json:"nolateexport"`
+	NoLocalStruct noLocalStructSettings `json:"nolocalstruct"`
+}
+
+type funcNameSettings struct {
+	IncludeVars bool `json:"include-vars"`
 }
 
 type ifaceNameSettings struct {
@@ -50,19 +58,29 @@ type noLateExportSettings struct {
 	UnexportedFuncsLast bool `json:"unexported-funcs-last"`
 }
 
+type noLocalStructSettings struct {
+	AllTypes bool `json:"all-types"`
+}
+
 // config holds the decoded per-analyzer configuration.
 type config struct {
-	ifacename    ifacename.Config
-	maxcaselines maxcaselines.Config
-	maxcases     maxcases.Config
-	nolateexport nolateexport.Config
+	funcname      funcname.Config
+	ifacename     ifacename.Config
+	maxcaselines  maxcaselines.Config
+	maxcases      maxcases.Config
+	noanonnested  noanonnested.Config
+	nolateexport  nolateexport.Config
+	nolocalstruct nolocalstruct.Config
 }
 
 type plugin struct {
-	ifacename    *analysis.Analyzer
-	maxcaselines *analysis.Analyzer
-	maxcases     *analysis.Analyzer
-	nolateexport *analysis.Analyzer
+	funcname      *analysis.Analyzer
+	ifacename     *analysis.Analyzer
+	maxcaselines  *analysis.Analyzer
+	maxcases      *analysis.Analyzer
+	noanonnested  *analysis.Analyzer
+	nolateexport  *analysis.Analyzer
+	nolocalstruct *analysis.Analyzer
 }
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
@@ -71,7 +89,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		constcond.Analyzer,
 		emptycomment.Analyzer,
 		emptyfunc.Analyzer,
-		funcname.Analyzer,
+		p.funcname,
 		p.ifacename,
 		ifinitonly.Analyzer,
 		p.maxcaselines,
@@ -79,7 +97,8 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		maxparams.Analyzer,
 		nolateconst.Analyzer,
 		p.nolateexport,
-		nolocalstruct.Analyzer,
+		p.noanonnested,
+		p.nolocalstruct,
 		nonestedswitch.Analyzer,
 	}, nil
 }
@@ -94,10 +113,13 @@ func newPlugin(conf any) (register.LinterPlugin, error) {
 		return nil, err
 	}
 	return &plugin{
-		ifacename:    ifacename.New(cfg.ifacename),
-		maxcaselines: maxcaselines.New(cfg.maxcaselines),
-		maxcases:     maxcases.New(cfg.maxcases),
-		nolateexport: nolateexport.New(cfg.nolateexport),
+		funcname:      funcname.New(cfg.funcname),
+		ifacename:     ifacename.New(cfg.ifacename),
+		maxcaselines:  maxcaselines.New(cfg.maxcaselines),
+		maxcases:      maxcases.New(cfg.maxcases),
+		noanonnested:  noanonnested.New(cfg.noanonnested),
+		nolateexport:  nolateexport.New(cfg.nolateexport),
+		nolocalstruct: nolocalstruct.New(cfg.nolocalstruct),
 	}, nil
 }
 
@@ -109,6 +131,7 @@ func validateMax(s settings) error {
 	}{
 		{"maxcaselines", s.MaxCaseLines.Max},
 		{"maxcases", s.MaxCases.Max},
+		{"noanonnested", s.NoAnonNested.Max},
 	}
 	for _, l := range limits {
 		if l.max < 0 {
@@ -127,9 +150,12 @@ func decodeConfig(conf any) (config, error) {
 		return config{}, err
 	}
 	return config{
-		ifacename:    ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
-		maxcaselines: maxcaselines.Config{Max: s.MaxCaseLines.Max},
-		maxcases:     maxcases.Config{Max: s.MaxCases.Max},
-		nolateexport: nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast},
+		funcname:      funcname.Config{IncludeVars: s.FuncName.IncludeVars},
+		ifacename:     ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
+		maxcaselines:  maxcaselines.Config{Max: s.MaxCaseLines.Max},
+		maxcases:      maxcases.Config{Max: s.MaxCases.Max},
+		noanonnested:  noanonnested.Config{Max: s.NoAnonNested.Max},
+		nolateexport:  nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast},
+		nolocalstruct: nolocalstruct.Config{AllTypes: s.NoLocalStruct.AllTypes},
 	}, nil
 }

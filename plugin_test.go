@@ -17,11 +17,15 @@ import (
 const analyzerName = "nolateexport"
 
 const (
-	ifaceNameKey    = "ifacename"
-	handlerIface    = "Handler"
-	maxCasesKey     = "maxcases"
-	maxCaseLinesKey = "maxcaselines"
-	maxKey          = "max"
+	funcNameKey      = "funcname"
+	ifaceNameKey     = "ifacename"
+	handlerIface     = "Handler"
+	maxCasesKey      = "maxcases"
+	maxCaseLinesKey  = "maxcaselines"
+	maxKey           = "max"
+	misspelledMaxKey = "maximum"
+	noAnonNestedKey  = "noanonnested"
+	noLocalStructKey = "nolocalstruct"
 )
 
 func TestDecodeConfig(t *testing.T) {
@@ -99,12 +103,12 @@ func TestDecodeConfigMaxCases(t *testing.T) {
 	})
 
 	t.Run("unknown maxcases key is rejected", func(t *testing.T) {
-		conf := map[string]any{maxCasesKey: map[string]any{"maximum": 3}}
+		conf := map[string]any{maxCasesKey: map[string]any{misspelledMaxKey: 3}}
 		_, err := decodeConfig(conf)
 		if err == nil {
 			t.Fatal("decodeConfig() error = nil, want unknown-field error")
 		}
-		if !strings.Contains(err.Error(), "maximum") {
+		if !strings.Contains(err.Error(), misspelledMaxKey) {
 			t.Errorf("error %q does not name the unknown field", err)
 		}
 	})
@@ -137,12 +141,12 @@ func TestDecodeConfigMaxCaseLines(t *testing.T) {
 	})
 
 	t.Run("unknown maxcaselines key is rejected", func(t *testing.T) {
-		conf := map[string]any{maxCaseLinesKey: map[string]any{"maximum": 3}}
+		conf := map[string]any{maxCaseLinesKey: map[string]any{misspelledMaxKey: 3}}
 		_, err := decodeConfig(conf)
 		if err == nil {
 			t.Fatal("decodeConfig() error = nil, want unknown-field error")
 		}
-		if !strings.Contains(err.Error(), "maximum") {
+		if !strings.Contains(err.Error(), misspelledMaxKey) {
 			t.Errorf("error %q does not name the unknown field", err)
 		}
 	})
@@ -296,4 +300,127 @@ func TestNewPluginWiresIfaceNameConfigIntoAnalyzer(t *testing.T) {
 		t.Fatalf("resolving testdata: %v", err)
 	}
 	analysistest.Run(t, testdata, got, "allowed")
+}
+
+func TestDecodeConfigNoLocalStruct(t *testing.T) {
+	t.Run("all-types reaches the nolocalstruct config", func(t *testing.T) {
+		conf := map[string]any{noLocalStructKey: map[string]any{"all-types": true}}
+		got, err := decodeConfig(conf)
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		if !got.nolocalstruct.AllTypes {
+			t.Errorf("decodeConfig() nolocalstruct = %+v, want AllTypes=true", got.nolocalstruct)
+		}
+	})
+
+	t.Run("unknown nolocalstruct key is rejected", func(t *testing.T) {
+		requireUnknownKey(t, map[string]any{noLocalStructKey: map[string]any{"all-type": true}}, "all-type")
+	})
+}
+
+func TestNewPluginWiresNoLocalStructConfigIntoAnalyzer(t *testing.T) {
+	got := buildNamed(t, map[string]any{noLocalStructKey: map[string]any{"all-types": true}}, noLocalStructKey)
+	// The alltypes package only passes if all-types reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(noLocalStructKey, "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "alltypes")
+}
+
+func TestDecodeConfigNoAnonNested(t *testing.T) {
+	t.Run("max reaches the noanonnested config", func(t *testing.T) {
+		conf := map[string]any{noAnonNestedKey: map[string]any{maxKey: 2}}
+		got, err := decodeConfig(conf)
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		if got.noanonnested.Max != 2 {
+			t.Errorf("decodeConfig() noanonnested = %+v, want Max=2", got.noanonnested)
+		}
+	})
+
+	t.Run("unknown noanonnested key is rejected", func(t *testing.T) {
+		requireUnknownKey(t, map[string]any{noAnonNestedKey: map[string]any{misspelledMaxKey: 2}}, misspelledMaxKey)
+	})
+
+	t.Run("negative max is rejected", func(t *testing.T) {
+		_, err := decodeConfig(map[string]any{noAnonNestedKey: map[string]any{maxKey: -1}})
+		if err == nil {
+			t.Fatal("decodeConfig() error = nil, want negative-max error")
+		}
+		if !strings.Contains(err.Error(), noAnonNestedKey) {
+			t.Errorf("error %q does not name the setting", err)
+		}
+	})
+}
+
+func TestNewPluginWiresNoAnonNestedConfigIntoAnalyzer(t *testing.T) {
+	got := buildNamed(t, map[string]any{noAnonNestedKey: map[string]any{maxKey: 2}}, noAnonNestedKey)
+	// The custom package only passes if max reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(noAnonNestedKey, "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "custom")
+}
+
+func TestDecodeConfigFuncName(t *testing.T) {
+	t.Run("include-vars reaches the funcname config", func(t *testing.T) {
+		conf := map[string]any{funcNameKey: map[string]any{"include-vars": true}}
+		got, err := decodeConfig(conf)
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		if !got.funcname.IncludeVars {
+			t.Errorf("decodeConfig() funcname = %+v, want IncludeVars=true", got.funcname)
+		}
+	})
+
+	t.Run("unknown funcname key is rejected", func(t *testing.T) {
+		requireUnknownKey(t, map[string]any{funcNameKey: map[string]any{"include-var": true}}, "include-var")
+	})
+}
+
+func TestNewPluginWiresFuncNameConfigIntoAnalyzer(t *testing.T) {
+	got := buildNamed(t, map[string]any{funcNameKey: map[string]any{"include-vars": true}}, funcNameKey)
+	// The includevars package only passes if include-vars reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(funcNameKey, "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "includevars")
+}
+
+// buildNamed builds the plugin from conf and returns the analyzer called name.
+func buildNamed(t *testing.T, conf map[string]any, name string) *analysis.Analyzer {
+	t.Helper()
+	p, err := newPlugin(conf)
+	if err != nil {
+		t.Fatalf("newPlugin() error = %v", err)
+	}
+	analyzers, err := p.BuildAnalyzers()
+	if err != nil {
+		t.Fatalf("BuildAnalyzers() error = %v", err)
+	}
+	for _, a := range analyzers {
+		if a.Name == name {
+			return a
+		}
+	}
+	t.Fatalf("BuildAnalyzers() has no %s analyzer", name)
+	return nil
+}
+
+// requireUnknownKey asserts that decoding conf fails and names the offending key.
+func requireUnknownKey(t *testing.T, conf map[string]any, key string) {
+	t.Helper()
+	_, err := decodeConfig(conf)
+	if err == nil {
+		t.Fatal("decodeConfig() error = nil, want unknown-field error")
+	}
+	if !strings.Contains(err.Error(), key) {
+		t.Errorf("error %q does not name the unknown field", err)
+	}
 }
