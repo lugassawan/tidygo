@@ -1,1 +1,2 @@
 copy_files = ['.claude']
+post_create = ['make init']
