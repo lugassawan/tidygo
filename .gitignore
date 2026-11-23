@@ -45,3 +45,4 @@ vendor/
 # Temporary files
 tmp/
 temp/
+.rimba/*.local.toml
