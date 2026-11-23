@@ -18,6 +18,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 |---|---|
 | `confusingop` | Reports `=+`, `=-`, `=!` and `=^` assignments that look like typos for `+=`, `-=`, `!=` and `^=` |
 | `constcond` | Forbids `if` and `for` statements whose condition is the literal `true` or `false` |
+| `emptycomment` | Forbids `/* */` block comments that contain only whitespace and `*` |
 | `funcname` | Forbids underscores in function and method names |
 | `ifacename` | Requires single-method interfaces to be named after their method plus an agent-noun suffix (`Read` → `Reader`) |
 | `ifinitonly` | Forbids `if` init variables used only in the condition |

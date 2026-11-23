@@ -42,6 +42,23 @@ for { run() }
 
 The check matches the identifier name only. A local variable that shadows `true` or `false` is still reported; the `predeclared` linter already flags such shadowing.
 
+## emptycomment
+
+Forbids `/* */` block comments that contain only whitespace and `*` characters. Empty block comments are leftovers from deleted text or unfinished stubs and carry no information. `//` comments are never reported, because an empty `//` line separates the paragraphs of a doc comment.
+
+```go
+// Bad
+/**/
+/* */
+/*
+ *
+ */
+
+// Good
+/* explanation */
+//
+```
+
 ## funcname
 
 Ensures function and method names match the pattern `^(_|[a-zA-Z0-9]+)$`. Underscores are not permitted.
