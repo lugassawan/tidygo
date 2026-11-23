@@ -46,6 +46,10 @@ Each name links to the analyzer's page, grouped in the [index](docs/analyzers/RE
 | [`txrollback`](docs/analyzers/txrollback.md) | Requires a `*sql.Tx` to have a `defer tx.Rollback()` |
 | [`weakpwhash`](docs/analyzers/weakpwhash.md) | Reports password hashing with a constant salt or a too-low constant cost |
 
+## Companion linters
+
+tidygo only implements conventions nothing else checks. [Companion linters](docs/companion-linters.md) maps SonarLint's Go rules to the golangci-lint linters that already cover them, and says which are in the `standard` set and which are opt-in.
+
 ## Installation
 
 Requirements: Go 1.26+, golangci-lint v2.
