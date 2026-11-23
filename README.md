@@ -17,6 +17,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | Analyzer | Description |
 |---|---|
 | `funcname` | Forbids underscores in function and method names |
+| `ifacename` | Requires single-method interfaces to be named after their method plus an agent-noun suffix (`Read` → `Reader`) |
 | `ifinitonly` | Forbids `if` init variables used only in the condition |
 | `maxparams` | Forbids functions with more than 7 parameters |
 | `nolateconst` | Forbids `const`/`var` declarations after function declarations |
@@ -48,8 +49,11 @@ linters:
     custom:
       tidygo:
         type: "module"
-        # Optional: also require exported methods before unexported standalone functions.
         settings:
+          # Optional: exempt interface names that cannot be derived from their method.
+          ifacename:
+            allowed-names: [Handler]
+          # Optional: also require exported methods before unexported standalone functions.
           nolateexport:
             unexported-funcs-last: true
 ```

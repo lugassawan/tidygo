@@ -2,16 +2,24 @@ package tidygo
 
 import (
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/analysistest"
 
+	"github.com/lugassawan/tidygo/ifacename"
 	"github.com/lugassawan/tidygo/nolateexport"
 )
 
 const analyzerName = "nolateexport"
+
+const (
+	ifaceNameKey = "ifacename"
+	handlerIface = "Handler"
+)
 
 func TestDecodeConfig(t *testing.T) {
 	t.Run("nil settings give the zero config", func(t *testing.T) {
@@ -19,7 +27,7 @@ func TestDecodeConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("decodeConfig(nil) error = %v", err)
 		}
-		if got != (nolateexport.Config{}) {
+		if !reflect.DeepEqual(got, config{}) {
 			t.Errorf("decodeConfig(nil) = %+v, want zero config", got)
 		}
 	})
@@ -30,7 +38,7 @@ func TestDecodeConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("decodeConfig() error = %v", err)
 		}
-		if !got.UnexportedFuncsLast {
+		if !got.nolateexport.UnexportedFuncsLast {
 			t.Errorf("decodeConfig() = %+v, want UnexportedFuncsLast=true", got)
 		}
 	})
@@ -42,6 +50,34 @@ func TestDecodeConfig(t *testing.T) {
 			t.Fatal("decodeConfig() error = nil, want unknown-field error")
 		}
 		if !strings.Contains(err.Error(), "unexported-func-last") {
+			t.Errorf("error %q does not name the unknown field", err)
+		}
+	})
+}
+
+func TestDecodeConfigIfaceName(t *testing.T) {
+	t.Run("allowed-names reaches the ifacename config", func(t *testing.T) {
+		conf := map[string]any{ifaceNameKey: map[string]any{"allowed-names": []any{handlerIface, "Reader"}}}
+		got, err := decodeConfig(conf)
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		want := ifacename.Config{AllowedNames: []string{handlerIface, "Reader"}}
+		if !slices.Equal(got.ifacename.AllowedNames, want.AllowedNames) {
+			t.Errorf("decodeConfig() ifacename = %+v, want %+v", got.ifacename, want)
+		}
+		if got.nolateexport != (nolateexport.Config{}) {
+			t.Errorf("decodeConfig() nolateexport = %+v, want zero config", got.nolateexport)
+		}
+	})
+
+	t.Run("unknown ifacename key is rejected", func(t *testing.T) {
+		conf := map[string]any{ifaceNameKey: map[string]any{"allowed-name": []any{handlerIface}}}
+		_, err := decodeConfig(conf)
+		if err == nil {
+			t.Fatal("decodeConfig() error = nil, want unknown-field error")
+		}
+		if !strings.Contains(err.Error(), "allowed-name") {
 			t.Errorf("error %q does not name the unknown field", err)
 		}
 	})
@@ -94,4 +130,30 @@ func TestNewPluginWiresConfigIntoAnalyzer(t *testing.T) {
 		t.Fatalf("resolving testdata: %v", err)
 	}
 	analysistest.Run(t, testdata, got, "funcslast")
+}
+
+func TestNewPluginWiresIfaceNameConfigIntoAnalyzer(t *testing.T) {
+	p, err := newPlugin(map[string]any{ifaceNameKey: map[string]any{"allowed-names": []any{handlerIface}}})
+	if err != nil {
+		t.Fatalf("newPlugin() error = %v", err)
+	}
+	analyzers, err := p.BuildAnalyzers()
+	if err != nil {
+		t.Fatalf("BuildAnalyzers() error = %v", err)
+	}
+	var got *analysis.Analyzer
+	for _, a := range analyzers {
+		if a.Name == ifaceNameKey {
+			got = a
+		}
+	}
+	if got == nil {
+		t.Fatal("BuildAnalyzers() has no ifacename analyzer")
+	}
+	// The allowed package only passes if allowed-names reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join("ifacename", "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "allowed")
 }

@@ -6,6 +6,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/lugassawan/tidygo/funcname"
+	"github.com/lugassawan/tidygo/ifacename"
 	"github.com/lugassawan/tidygo/ifinitonly"
 	"github.com/lugassawan/tidygo/maxparams"
 	"github.com/lugassawan/tidygo/nolateconst"
@@ -20,20 +21,33 @@ func init() {
 // settings mirrors the golangci-lint `linters.settings.custom.tidygo.settings` block.
 // Unknown keys are rejected by register.DecodeSettings, so typos fail loudly.
 type settings struct {
+	IfaceName    ifaceNameSettings    `json:"ifacename"`
 	NoLateExport noLateExportSettings `json:"nolateexport"`
+}
+
+type ifaceNameSettings struct {
+	AllowedNames []string `json:"allowed-names"`
 }
 
 type noLateExportSettings struct {
 	UnexportedFuncsLast bool `json:"unexported-funcs-last"`
 }
 
+// config holds the decoded per-analyzer configuration.
+type config struct {
+	ifacename    ifacename.Config
+	nolateexport nolateexport.Config
+}
+
 type plugin struct {
+	ifacename    *analysis.Analyzer
 	nolateexport *analysis.Analyzer
 }
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return []*analysis.Analyzer{
 		funcname.Analyzer,
+		p.ifacename,
 		ifinitonly.Analyzer,
 		maxparams.Analyzer,
 		nolateconst.Analyzer,
@@ -51,13 +65,19 @@ func newPlugin(conf any) (register.LinterPlugin, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &plugin{nolateexport: nolateexport.New(cfg)}, nil
+	return &plugin{
+		ifacename:    ifacename.New(cfg.ifacename),
+		nolateexport: nolateexport.New(cfg.nolateexport),
+	}, nil
 }
 
-func decodeConfig(conf any) (nolateexport.Config, error) {
+func decodeConfig(conf any) (config, error) {
 	s, err := register.DecodeSettings[settings](conf)
 	if err != nil {
-		return nolateexport.Config{}, err
+		return config{}, err
 	}
-	return nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast}, nil
+	return config{
+		ifacename:    ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
+		nolateexport: nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast},
+	}, nil
 }
