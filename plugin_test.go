@@ -19,10 +19,21 @@ const analyzerName = "nolateexport"
 const (
 	ifaceNameKey    = "ifacename"
 	handlerIface    = "Handler"
+	maxBoolOpsKey   = "maxboolops"
 	maxCasesKey     = "maxcases"
 	maxCaseLinesKey = "maxcaselines"
 	maxKey          = "max"
 )
+
+// maxLimits lists the analyzers that share the single-limit settings block.
+var maxLimits = []struct {
+	key string
+	get func(config) int
+}{
+	{maxBoolOpsKey, func(c config) int { return c.maxboolops.Max }},
+	{maxCaseLinesKey, func(c config) int { return c.maxcaselines.Max }},
+	{maxCasesKey, func(c config) int { return c.maxcases.Max }},
+}
 
 func TestDecodeConfig(t *testing.T) {
 	t.Run("nil settings give the zero config", func(t *testing.T) {
@@ -86,77 +97,46 @@ func TestDecodeConfigIfaceName(t *testing.T) {
 	})
 }
 
-func TestDecodeConfigMaxCases(t *testing.T) {
-	t.Run("max reaches the maxcases config", func(t *testing.T) {
-		conf := map[string]any{maxCasesKey: map[string]any{maxKey: 3}}
-		got, err := decodeConfig(conf)
-		if err != nil {
-			t.Fatalf("decodeConfig() error = %v", err)
-		}
-		if got.maxcases.Max != 3 {
-			t.Errorf("decodeConfig() maxcases = %+v, want Max=3", got.maxcases)
-		}
-	})
-
-	t.Run("unknown maxcases key is rejected", func(t *testing.T) {
-		conf := map[string]any{maxCasesKey: map[string]any{"maximum": 3}}
-		_, err := decodeConfig(conf)
-		if err == nil {
-			t.Fatal("decodeConfig() error = nil, want unknown-field error")
-		}
-		if !strings.Contains(err.Error(), "maximum") {
-			t.Errorf("error %q does not name the unknown field", err)
-		}
-	})
-
-	t.Run("negative max is rejected", func(t *testing.T) {
-		conf := map[string]any{maxCasesKey: map[string]any{maxKey: -1}}
-		_, err := decodeConfig(conf)
-		if err == nil {
-			t.Fatal("decodeConfig() error = nil, want negative-max error")
-		}
-		if !strings.Contains(err.Error(), maxCasesKey) {
-			t.Errorf("error %q does not name the setting", err)
-		}
-	})
+func TestDecodeConfigMaxReachesConfig(t *testing.T) {
+	for _, l := range maxLimits {
+		t.Run(l.key, func(t *testing.T) {
+			got, err := decodeConfig(map[string]any{l.key: map[string]any{maxKey: 3}})
+			if err != nil {
+				t.Fatalf("decodeConfig() error = %v", err)
+			}
+			if v := l.get(got); v != 3 {
+				t.Errorf("decodeConfig() %s max = %d, want 3", l.key, v)
+			}
+		})
+	}
 }
 
-func TestDecodeConfigMaxCaseLines(t *testing.T) {
-	t.Run("max reaches the maxcaselines config", func(t *testing.T) {
-		conf := map[string]any{maxCaseLinesKey: map[string]any{maxKey: 3}}
-		got, err := decodeConfig(conf)
-		if err != nil {
-			t.Fatalf("decodeConfig() error = %v", err)
-		}
-		if got.maxcaselines.Max != 3 {
-			t.Errorf("decodeConfig() maxcaselines = %+v, want Max=3", got.maxcaselines)
-		}
-		if got.maxcases.Max != 0 {
-			t.Errorf("decodeConfig() maxcases = %+v, want zero config", got.maxcases)
-		}
-	})
+func TestDecodeConfigMaxRejectsUnknownKey(t *testing.T) {
+	for _, l := range maxLimits {
+		t.Run(l.key, func(t *testing.T) {
+			_, err := decodeConfig(map[string]any{l.key: map[string]any{"maximum": 3}})
+			if err == nil {
+				t.Fatal("decodeConfig() error = nil, want unknown-field error")
+			}
+			if !strings.Contains(err.Error(), "maximum") {
+				t.Errorf("error %q does not name the unknown field", err)
+			}
+		})
+	}
+}
 
-	t.Run("unknown maxcaselines key is rejected", func(t *testing.T) {
-		conf := map[string]any{maxCaseLinesKey: map[string]any{"maximum": 3}}
-		_, err := decodeConfig(conf)
-		if err == nil {
-			t.Fatal("decodeConfig() error = nil, want unknown-field error")
-		}
-		if !strings.Contains(err.Error(), "maximum") {
-			t.Errorf("error %q does not name the unknown field", err)
-		}
-	})
-
-	t.Run("negative max is rejected", func(t *testing.T) {
-		conf := map[string]any{maxCaseLinesKey: map[string]any{maxKey: -1}}
-		_, err := decodeConfig(conf)
-		if err == nil {
-			t.Fatal("decodeConfig() error = nil, want negative-max error")
-		}
-		if !strings.Contains(err.Error(), maxCaseLinesKey) {
-			t.Errorf("error %q does not name the setting", err)
-		}
-	})
+func TestDecodeConfigMaxRejectsNegative(t *testing.T) {
+	for _, l := range maxLimits {
+		t.Run(l.key, func(t *testing.T) {
+			_, err := decodeConfig(map[string]any{l.key: map[string]any{maxKey: -1}})
+			if err == nil {
+				t.Fatal("decodeConfig() error = nil, want negative-max error")
+			}
+			if !strings.Contains(err.Error(), l.key) {
+				t.Errorf("error %q does not name the setting", err)
+			}
+		})
+	}
 }
 
 func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
@@ -178,6 +158,7 @@ func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
 		"emptycomment",
 		"emptyfunc",
 		"ifinitonly",
+		"maxboolops",
 		"nonestedswitch",
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -246,6 +227,19 @@ func TestNewPluginWiresMaxCasesConfigIntoAnalyzer(t *testing.T) {
 	analysistest.Run(t, testdata, got, "custom")
 }
 
+func TestNewPluginWiresMaxBoolOpsConfigIntoAnalyzer(t *testing.T) {
+	got := buildAnalyzer(t, map[string]any{maxBoolOpsKey: map[string]any{maxKey: 1}}, maxBoolOpsKey)
+	if got == nil {
+		t.Fatal("BuildAnalyzers() has no maxboolops analyzer")
+	}
+	// The custom package only passes if max reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(maxBoolOpsKey, "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "custom")
+}
+
 func TestNewPluginWiresMaxCaseLinesConfigIntoAnalyzer(t *testing.T) {
 	p, err := newPlugin(map[string]any{maxCaseLinesKey: map[string]any{maxKey: 3}})
 	if err != nil {
@@ -296,4 +290,23 @@ func TestNewPluginWiresIfaceNameConfigIntoAnalyzer(t *testing.T) {
 		t.Fatalf("resolving testdata: %v", err)
 	}
 	analysistest.Run(t, testdata, got, "allowed")
+}
+
+// buildAnalyzer builds the plugin from conf and returns the analyzer called name, or nil if it is not registered.
+func buildAnalyzer(t *testing.T, conf any, name string) *analysis.Analyzer {
+	t.Helper()
+	p, err := newPlugin(conf)
+	if err != nil {
+		t.Fatalf("newPlugin() error = %v", err)
+	}
+	analyzers, err := p.BuildAnalyzers()
+	if err != nil {
+		t.Fatalf("BuildAnalyzers() error = %v", err)
+	}
+	for _, a := range analyzers {
+		if a.Name == name {
+			return a
+		}
+	}
+	return nil
 }

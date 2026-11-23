@@ -14,6 +14,7 @@ import (
 	"github.com/lugassawan/tidygo/funcname"
 	"github.com/lugassawan/tidygo/ifacename"
 	"github.com/lugassawan/tidygo/ifinitonly"
+	"github.com/lugassawan/tidygo/maxboolops"
 	"github.com/lugassawan/tidygo/maxcaselines"
 	"github.com/lugassawan/tidygo/maxcases"
 	"github.com/lugassawan/tidygo/maxparams"
@@ -31,6 +32,7 @@ func init() {
 // Unknown keys are rejected by register.DecodeSettings, so typos fail loudly.
 type settings struct {
 	IfaceName    ifaceNameSettings    `json:"ifacename"`
+	MaxBoolOps   maxSettings          `json:"maxboolops"`
 	MaxCaseLines maxSettings          `json:"maxcaselines"`
 	MaxCases     maxSettings          `json:"maxcases"`
 	NoLateExport noLateExportSettings `json:"nolateexport"`
@@ -53,6 +55,7 @@ type noLateExportSettings struct {
 // config holds the decoded per-analyzer configuration.
 type config struct {
 	ifacename    ifacename.Config
+	maxboolops   maxboolops.Config
 	maxcaselines maxcaselines.Config
 	maxcases     maxcases.Config
 	nolateexport nolateexport.Config
@@ -60,6 +63,7 @@ type config struct {
 
 type plugin struct {
 	ifacename    *analysis.Analyzer
+	maxboolops   *analysis.Analyzer
 	maxcaselines *analysis.Analyzer
 	maxcases     *analysis.Analyzer
 	nolateexport *analysis.Analyzer
@@ -74,6 +78,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		funcname.Analyzer,
 		p.ifacename,
 		ifinitonly.Analyzer,
+		p.maxboolops,
 		p.maxcaselines,
 		p.maxcases,
 		maxparams.Analyzer,
@@ -95,6 +100,7 @@ func newPlugin(conf any) (register.LinterPlugin, error) {
 	}
 	return &plugin{
 		ifacename:    ifacename.New(cfg.ifacename),
+		maxboolops:   maxboolops.New(cfg.maxboolops),
 		maxcaselines: maxcaselines.New(cfg.maxcaselines),
 		maxcases:     maxcases.New(cfg.maxcases),
 		nolateexport: nolateexport.New(cfg.nolateexport),
@@ -107,6 +113,7 @@ func validateMax(s settings) error {
 		name string
 		max  int
 	}{
+		{"maxboolops", s.MaxBoolOps.Max},
 		{"maxcaselines", s.MaxCaseLines.Max},
 		{"maxcases", s.MaxCases.Max},
 	}
@@ -128,6 +135,7 @@ func decodeConfig(conf any) (config, error) {
 	}
 	return config{
 		ifacename:    ifacename.Config{AllowedNames: s.IfaceName.AllowedNames},
+		maxboolops:   maxboolops.Config{Max: s.MaxBoolOps.Max},
 		maxcaselines: maxcaselines.Config{Max: s.MaxCaseLines.Max},
 		maxcases:     maxcases.Config{Max: s.MaxCases.Max},
 		nolateexport: nolateexport.Config{UnexportedFuncsLast: s.NoLateExport.UnexportedFuncsLast},
