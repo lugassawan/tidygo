@@ -22,6 +22,7 @@ A [golangci-lint](https://golangci-lint.run/) v2 plugin that enforces code order
 | `maxcaselines` | Forbids `case` clause bodies that span more than 10 lines (configurable) |
 | `maxcases` | Forbids `switch`, type switch and `select` statements with more than 30 case clauses (configurable) |
 | `maxparams` | Forbids functions with more than 7 parameters |
+| `noanonnested` | Forbids anonymous structs nested more than 1 level deep inside other anonymous structs (configurable) |
 | `nolateconst` | Forbids `const`/`var` declarations after function declarations |
 | `nolateexport` | Forbids exported functions after unexported functions, and exported methods after unexported methods of the same type |
 | `nolocalstruct` | Forbids named struct type declarations inside function bodies (optionally all named types) |
@@ -62,6 +63,9 @@ linters:
           # Optional: raise the most allowed case clauses per switch (default 30).
           maxcases:
             max: 40
+          # Optional: raise the deepest allowed nesting of anonymous structs (default 1).
+          noanonnested:
+            max: 2
           # Optional: also require exported methods before unexported standalone functions.
           nolateexport:
             unexported-funcs-last: true
