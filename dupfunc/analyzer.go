@@ -1,23 +1,7 @@
 // Package dupfunc defines an analyzer that reports functions whose bodies and
-// signatures are identical to an earlier function in the same package. Only bodies of at
-// least DefaultMinStmts top-level statements are compared (Config.MinStmts
-// overrides the minimum), test files and generated files are skipped, and
-// function literals and init functions are ignored.
-//
-// The signatures must match too: functions whose parameter or result types
-// differ, such as clampInt and clampFloat, cannot be merged without generics and
-// are not reported. Types are compared as the type checker resolves them, so
-// byte matches uint8, an alias matches its target, and generic functions match up
-// to the names of their type parameters. Receivers and parameter names are not
-// compared, so methods on different types with the same signature are reported.
-// Methods of different generic types match only when their signatures do not
-// mention the receiver's type parameters, which are distinct for each type.
-//
-// Bodies are compared structurally: positions, comments and layout are
-// ignored, but identifier names, literals and operators must match exactly, so
-// a renamed local variable makes a body different. Each later duplicate is
-// reported against the first earlier function with an identical signature, by
-// file name and offset, so a //nolint directive belongs on the later function.
+// signatures are identical to an earlier function in the same package. Bodies
+// are compared structurally and each duplicate is reported against the first copy.
+// See docs/analyzers/dupfunc.md.
 package dupfunc
 
 import (
@@ -65,7 +49,6 @@ func New(cfg Config) *analysis.Analyzer {
 	}
 }
 
-// candidate is a function eligible for comparison together with its source position.
 type candidate struct {
 	decl *ast.FuncDecl
 	pos  token.Position
@@ -106,7 +89,6 @@ func run(pass *analysis.Pass, minStmts int) (any, error) {
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
 }
 
-// collect returns the functions large enough to compare, skipping test and generated files.
 func collect(pass *analysis.Pass, minStmts int) []*candidate {
 	var out []*candidate
 	for _, f := range pass.Files {
@@ -125,9 +107,9 @@ func collect(pass *analysis.Pass, minStmts int) []*candidate {
 	return out
 }
 
-// findMatch returns the first function in group whose signature is identical to
-// c's, or nil. A function without a signature matches nothing: a missed report
-// costs less than a false one.
+// findMatch returns the first function in group with c's signature, or nil. A
+// function without a signature matches nothing: a missed report costs less than
+// a false one.
 func findMatch(group []*candidate, c *candidate) *candidate {
 	if len(group) == 0 {
 		return nil
@@ -204,8 +186,8 @@ func instantiatedMethodSignature(fn *types.Func, sig *types.Signature) *types.Si
 	return canon
 }
 
-// isInit reports whether fd is a package-level init function. A package may
-// declare several, and they cannot be merged by calling one from another.
+// isInit reports whether fd is an init function. A package may declare several,
+// and they cannot be merged by calling one from another.
 func isInit(fd *ast.FuncDecl) bool {
 	return fd.Recv == nil && fd.Name.Name == "init"
 }
@@ -277,7 +259,6 @@ func writeDetail(b *strings.Builder, n ast.Node) {
 	}
 }
 
-// funcName renders a function as Name, or Recv.Name for a method.
 func funcName(fd *ast.FuncDecl) string {
 	if fd.Recv == nil || len(fd.Recv.List) == 0 {
 		return fd.Name.Name

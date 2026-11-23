@@ -1,6 +1,7 @@
 // Package nolocalstruct defines an analyzer that forbids named struct type
-// declarations inside function bodies. Structs should be declared at package level.
-// Config.AllTypes extends the rule to every named type declared in a function.
+// declarations inside function bodies. Config.AllTypes extends the rule to
+// every named type declared in a function.
+// See docs/analyzers/nolocalstruct.md.
 package nolocalstruct
 
 import (
@@ -74,7 +75,6 @@ func run(pass *analysis.Pass, cfg Config) (any, error) {
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
 }
 
-// messageFor returns the diagnostic format for a local type spec and whether to report it.
 func messageFor(ts *ast.TypeSpec, cfg Config) (string, bool) {
 	if _, isStruct := ts.Type.(*ast.StructType); isStruct {
 		return structMessage, true

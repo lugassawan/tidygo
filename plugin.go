@@ -60,7 +60,7 @@ type funcNameSettings struct {
 	IncludeVars bool `json:"include-vars"`
 }
 
-// dupFuncSettings tunes dupfunc. Zero or unset selects the default minimum; negative values are rejected.
+// dupFuncSettings: zero or unset selects the default minimum; negative values are rejected.
 type dupFuncSettings struct {
 	MinStatements int `json:"min-statements"`
 }
@@ -92,7 +92,6 @@ type noLocalStructSettings struct {
 	AllTypes bool `json:"all-types"`
 }
 
-// config holds the decoded per-analyzer configuration.
 type config struct {
 	dupfunc          dupfunc.Config
 	elseifelse       bool

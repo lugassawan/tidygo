@@ -1,7 +1,7 @@
-// Package deferredcancel defines an analyzer that requires the cancel func of context.WithCancel, WithTimeout,
-// WithDeadline and their Cause variants to be deferred on the next statement. Unlike govet's lostcancel (cancel
-// must be called on some path), it demands `defer cancel()` right after creation; blank or escaping cancel funcs
-// are skipped.
+// Package deferredcancel defines an analyzer that requires the cancel func of
+// context.WithCancel, WithTimeout, WithDeadline and their Cause variants to be
+// deferred on the next statement, which is stricter than govet's lostcancel.
+// See docs/analyzers/deferredcancel.md.
 package deferredcancel
 
 import (
@@ -108,7 +108,6 @@ func deferArg(fn string) string {
 	return ""
 }
 
-// defersAfter reports whether body defers obj's cancel func at a point after pos.
 func defersAfter(info *types.Info, body *ast.BlockStmt, obj types.Object, pos token.Pos) bool {
 	found := false
 	ast.Inspect(body, func(n ast.Node) bool {

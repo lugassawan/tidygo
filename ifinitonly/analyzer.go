@@ -1,5 +1,6 @@
 // Package ifinitonly defines an analyzer that forbids `if` init variables used
 // only in the condition. The call can go straight into the condition instead.
+// See docs/analyzers/ifinitonly.md.
 package ifinitonly
 
 import (
@@ -44,7 +45,6 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
 }
 
-// initVar returns the variable declared by a single-variable `:=` init statement.
 func initVar(ifs *ast.IfStmt) (*ast.Ident, bool) {
 	as, ok := ifs.Init.(*ast.AssignStmt)
 	if !ok || as.Tok != token.DEFINE || len(as.Lhs) != 1 {

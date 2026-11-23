@@ -1,6 +1,7 @@
 // Package maxcases defines an analyzer that reports switch, type switch and
-// select statements with too many case clauses. The default clause counts as
-// a clause. Config.Max overrides the default limit of DefaultMax.
+// select statements with too many case clauses (the default clause counts).
+// Config.Max overrides the default limit of DefaultMax.
+// See docs/analyzers/maxcases.md.
 package maxcases
 
 import (
@@ -61,7 +62,6 @@ func run(pass *analysis.Pass, limit int) (any, error) {
 	return nil, nil //nolint:nilnil // analysis.Analyzer.Run conventionally returns (nil, nil)
 }
 
-// describe returns the statement kind and its clause count.
 func describe(n ast.Node) (string, int) {
 	switch s := n.(type) {
 	case *ast.SwitchStmt:

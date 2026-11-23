@@ -2,7 +2,7 @@
 // an os.Stat not-exist check, os.Create can clobber a file a concurrent writer
 // made in between. The atomic form is os.OpenFile with O_CREATE|O_EXCL.
 //
-// See docs/analyzers.md for what is matched and where the check stops.
+// See docs/analyzers/atomiccreate.md for what is matched and where the check stops.
 package atomiccreate
 
 import (
@@ -34,7 +34,6 @@ const message = "os.%s after os.Stat existence check is racy; use os.OpenFile wi
 // creators lists the os functions that create a file without exclusivity.
 var creators = []string{"Create", "WriteFile", "OpenFile"}
 
-// checker holds the per-function state needed to resolve errors and paths.
 type checker struct {
 	pass     *analysis.Pass
 	info     *types.Info
@@ -115,7 +114,6 @@ func (c *checker) notExistStats(cond ast.Expr) []*ast.CallExpr {
 	return stats
 }
 
-// conjuncts flattens a chain of && into its operands.
 func conjuncts(e ast.Expr) []ast.Expr {
 	switch x := e.(type) {
 	case *ast.ParenExpr:

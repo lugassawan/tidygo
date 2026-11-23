@@ -1,8 +1,7 @@
 // Package aeadcipher defines an analyzer that reports unauthenticated block
-// cipher modes used for encryption. CBC encryption and CTR give confidentiality
-// but no integrity, so ciphertext can be tampered with undetected; an AEAD such
-// as GCM or ChaCha20-Poly1305 authenticates it. CBC decryption is not reported
-// because reading legacy data needs it.
+// cipher modes used for encryption (CBC encryption and CTR), whose ciphertext
+// can be tampered with undetected; an AEAD such as GCM authenticates it.
+// See docs/analyzers/aeadcipher.md.
 package aeadcipher
 
 import (

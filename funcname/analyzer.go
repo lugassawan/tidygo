@@ -1,6 +1,7 @@
 // Package funcname defines an analyzer that forbids underscores in function names.
 // Config.IncludeVars extends the same rule to variables, constants, parameters,
 // results and receivers.
+// See docs/analyzers/funcname.md.
 package funcname
 
 import (
@@ -84,14 +85,12 @@ func (c checker) funcDecl(fn *ast.FuncDecl, includeVars bool) {
 	}
 }
 
-// signature checks the named parameters and results of a function type.
 // Type parameters are not checked.
 func (c checker) signature(ft *ast.FuncType) {
 	c.fields(ft.Params, "parameter")
 	c.fields(ft.Results, "result")
 }
 
-// genDecl checks the names declared by var and const declarations.
 func (c checker) genDecl(gd *ast.GenDecl) {
 	var kind string
 	switch gd.Tok {

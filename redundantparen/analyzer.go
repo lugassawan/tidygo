@@ -1,8 +1,8 @@
 // Package redundantparen defines an analyzer that reports unnecessary
 // parentheses: doubled parentheses such as ((x)), and parentheses around a
 // whole return value, assignment or declaration right-hand side, or call
-// argument. Other parentheses inside binary operands are left alone because
-// they often clarify mixed operators.
+// argument. Parentheses inside binary operands are left alone.
+// See docs/analyzers/redundantparen.md.
 package redundantparen
 
 import (
@@ -66,9 +66,8 @@ func isRedundant(paren *ast.ParenExpr, parent ast.Node, stack []ast.Node) bool {
 	return !required
 }
 
-// isOperand reports whether e is a top-level operand of parent: a returned
-// value, a right-hand side, or a call argument. The callee of a call is never
-// an operand, so conversions such as (*T)(nil) are kept.
+// isOperand reports whether e is a top-level operand of parent. The callee of a
+// call is never an operand, so conversions such as (*T)(nil) are kept.
 func isOperand(parent ast.Node, e ast.Expr) bool {
 	switch p := parent.(type) {
 	case *ast.ReturnStmt:

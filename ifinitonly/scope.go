@@ -6,7 +6,6 @@ import (
 	"slices"
 )
 
-// refs summarises the references to one outer variable found in a subtree.
 type refs struct {
 	count int  // every reference
 	lazy  int  // references that run conditionally or repeatedly: right of &&/||, inside a func literal
@@ -82,7 +81,7 @@ func (r *resolver) ident(id *ast.Ident) {
 	}
 }
 
-// visitAll visits each node in order. Nil interface values are skipped.
+// visitAll skips nil interface values.
 func (r *resolver) visitAll(nodes ...ast.Node) {
 	for _, n := range nodes {
 		r.visit(n)
@@ -112,8 +111,8 @@ func (r *resolver) children(n ast.Node) {
 	})
 }
 
-// stmts walks a statement list. A statement that declares the name shadows it
-// for the remainder of the list.
+// stmts stops at a statement that declares the name: it shadows the outer
+// variable for the remainder of the list.
 func (r *resolver) stmts(list []ast.Stmt) {
 	for _, s := range list {
 		if r.countInitsIfDeclares(s) {

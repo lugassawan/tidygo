@@ -1,7 +1,7 @@
 // Package txrollback defines an analyzer that requires a begun *sql.Tx to be
 // rolled back through a deferred Rollback, since a leaked transaction pins its
-// connection and locks. Transactions that escape the function (returned, passed
-// on, stored) are skipped because ownership has moved.
+// connection and locks.
+// See docs/analyzers/txrollback.md.
 package txrollback
 
 import (
@@ -27,7 +27,6 @@ var Analyzer = &analysis.Analyzer{
 	Run:      run,
 }
 
-// txType names a transaction type by package path and type name.
 type txType struct{ pkg, name string }
 
 // trackedTypes lists the transaction types whose Begin must be paired with a
@@ -206,7 +205,6 @@ func isTrackedVar(info *types.Info, id *ast.Ident) bool {
 	return ok && isTrackedType(v.Type())
 }
 
-// isTrackedType reports whether t is a pointer to one of trackedTypes.
 func isTrackedType(t types.Type) bool {
 	ptr, ok := types.Unalias(t).(*types.Pointer)
 	if !ok {
@@ -271,8 +269,6 @@ func handedOffRollbacks(info *types.Info, body *ast.BlockStmt, into map[types.Ob
 	})
 }
 
-// rollbackValueReceiver returns the variable whose Rollback method sel selects,
-// or nil when sel is anything else.
 func rollbackValueReceiver(info *types.Info, sel *ast.SelectorExpr) types.Object {
 	fn, ok := info.ObjectOf(sel.Sel).(*types.Func)
 	if !ok || fn.Name() != "Rollback" {

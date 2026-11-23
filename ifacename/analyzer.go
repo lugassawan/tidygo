@@ -1,11 +1,7 @@
 // Package ifacename defines an analyzer that requires a single-method interface
 // to be named after its method plus an agent-noun suffix (Read → Reader).
-//
-// Only interfaces declared in the linted packages whose body is exactly one
-// exported method are checked; embedded interfaces, type-set elements and
-// unexported (sealed or marker) methods are skipped. Config.AllowedNames exempts
-// names that cannot be derived mechanically. See docs/analyzers.md for the
-// accepted spellings.
+// Config.AllowedNames exempts names that cannot be derived mechanically.
+// See docs/analyzers/ifacename.md.
 package ifacename
 
 import (
@@ -98,8 +94,6 @@ func singleMethod(iface *ast.InterfaceType) (string, bool) {
 	return field.Names[0].Name, true
 }
 
-// isAcceptedName reports whether name is an agent noun of method, ignoring the
-// case of the first letter on both sides.
 func isAcceptedName(method, name string) bool {
 	want := upperFirst(name)
 	for _, candidate := range acceptedNames(method) {
@@ -124,7 +118,6 @@ func acceptedNames(method string) []string {
 	return names
 }
 
-// agentNouns returns the common English agent-noun spellings of word.
 func agentNouns(word string) []string {
 	r := []rune(word)
 	n := len(r)
@@ -143,9 +136,8 @@ func agentNouns(word string) []string {
 	return nouns
 }
 
-// suggest builds the example name shown in the diagnostic. It picks one spelling
-// by the first rule that applies, then cases its first letter to match whether
-// the offending interface is exported.
+// suggest builds the example name for the diagnostic, cased to match whether the
+// offending interface is exported.
 func suggest(method string, exported bool) string {
 	word := firstWord(method)
 	noun := primaryNoun(word) + method[len(word):]

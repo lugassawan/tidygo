@@ -1,13 +1,7 @@
-// Package nolateexport defines an analyzer that enforces export-first ordering.
-//
-// Standalone functions: exported functions must appear before unexported ones.
-//
-// Methods: within a file, exported methods of a receiver type must appear
-// before unexported methods of that same type, wherever the type is declared.
-// Methods of different types are tracked independently.
-//
-// Optionally (Config.UnexportedFuncsLast), exported methods must also appear
-// before unexported standalone functions.
+// Package nolateexport defines an analyzer that enforces export-first ordering for
+// functions and, per receiver type, for methods. Config.UnexportedFuncsLast also
+// puts exported methods before unexported standalone functions.
+// See docs/analyzers/nolateexport.md.
 package nolateexport
 
 import (
@@ -41,7 +35,6 @@ func New(cfg Config) *analysis.Analyzer {
 	}
 }
 
-// fileState tracks what has been seen so far while walking one file's declarations.
 type fileState struct {
 	seenUnexportedFunc   bool
 	seenUnexportedMethod map[string]bool // keyed by receiver base type name

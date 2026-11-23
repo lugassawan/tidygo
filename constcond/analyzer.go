@@ -1,5 +1,6 @@
 // Package constcond defines an analyzer that forbids if and for statements whose
 // condition is the literal true or false.
+// See docs/analyzers/constcond.md.
 package constcond
 
 import (

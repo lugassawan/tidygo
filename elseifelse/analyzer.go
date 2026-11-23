@@ -1,6 +1,6 @@
 // Package elseifelse defines an analyzer that reports if-else-if chains that do
-// not end in a final else clause. A plain if and an if/else are never
-// reported. The analyzer is opt-in in the tidygo plugin.
+// not end in a final else clause. It is opt-in in the tidygo plugin.
+// See docs/analyzers/elseifelse.md.
 package elseifelse
 
 import (
