@@ -9,6 +9,7 @@ import (
 
 	"github.com/lugassawan/tidygo/confusingop"
 	"github.com/lugassawan/tidygo/constcond"
+	"github.com/lugassawan/tidygo/dupfunc"
 	"github.com/lugassawan/tidygo/elseifelse"
 	"github.com/lugassawan/tidygo/emptycomment"
 	"github.com/lugassawan/tidygo/emptyfunc"
@@ -83,6 +84,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	analyzers := []*analysis.Analyzer{
 		confusingop.Analyzer,
 		constcond.Analyzer,
+		dupfunc.Analyzer,
 		emptycomment.Analyzer,
 		emptyfunc.Analyzer,
 		funcname.Analyzer,

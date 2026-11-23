@@ -207,6 +207,7 @@ func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
 	for _, name := range []string{
 		"confusingop",
 		"constcond",
+		"dupfunc",
 		"emptycomment",
 		"emptyfunc",
 		"ifinitonly",
