@@ -202,6 +202,87 @@ Only a single-variable `:=` init is checked. Multi-value inits such as `v, ok :=
 
 The analyzer runs without type information, so shadowing is resolved syntactically. A redeclaration of the same name in the body (`n := 5`, a closure parameter, a nested `if`/`for`/`switch`/`select` binding) is not counted as a use of the init variable. Where the two cannot be told apart it errs on the side of not reporting. For example, a struct-literal key such as `T{n: 1}` counts as a use, because it could be a map key that reads the variable.
 
+## maxcaselines
+
+Reports a `case` or `default` clause (in a `switch`, type switch or `select`) whose body spans more than 10 lines. Long case bodies hide the shape of the switch; extract the body into a function named for what the case does.
+
+The span runs from the **first statement's start line** through the **last statement's end line**, inclusive. Blank and comment lines *between* statements count, and a single statement that wraps over several lines counts in full. Comments before the first statement or after the last one do not. A clause with an empty body is never reported. The diagnostic is reported at the clause.
+
+```go
+// Bad — the body spans 11 lines
+switch kind {
+case kindA: // error: case clause body spans 11 lines, max is 10
+	a1()
+	// ...
+	a11()
+}
+
+// Good
+switch kind {
+case kindA:
+	handleA()
+case kindB:
+	handleB()
+}
+```
+
+### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `max` | `10` | Largest allowed body span, in lines. `0` or unset uses the default; a negative value is an error. |
+
+```yaml
+linters:
+  settings:
+    custom:
+      tidygo:
+        type: "module"
+        settings:
+          maxcaselines:
+            max: 15
+```
+
+Unknown keys are rejected, so a typo in the option name fails loudly instead of being silently ignored.
+
+## maxcases
+
+Reports a `switch`, type switch or `select` statement with more than 30 case clauses. The `default` clause counts as a clause. A statement this large is usually better served by a lookup table or by splitting the dispatch.
+
+```go
+// Bad — 31 clauses
+switch op { // error: switch has 31 case clauses, max is 30
+case op1:
+case op2:
+	// ...
+case op31:
+}
+
+// Good — a table replaces the switch
+var handlers = map[Op]func(){op1: handle1, op2: handle2 /* ... */}
+```
+
+The message names the statement kind: `switch`, `type switch` or `select`.
+
+### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `max` | `30` | Largest allowed number of clauses, `default` included. `0` or unset uses the default; a negative value is an error. |
+
+```yaml
+linters:
+  settings:
+    custom:
+      tidygo:
+        type: "module"
+        settings:
+          maxcases:
+            max: 20
+```
+
+Unknown keys are rejected, so a typo in the option name fails loudly instead of being silently ignored.
+
 ## maxparams
 
 Reports functions and function literals with more than 7 parameters. This includes both named and anonymous parameters.
@@ -336,3 +417,38 @@ func convert() {
     _ = myInt(0)
 }
 ```
+
+## nonestedswitch
+
+Forbids a `switch` or type switch nested inside a case clause of another `switch` or type switch. Extract the inner switch into a function so each level stays readable.
+
+```go
+// Bad
+switch a {
+case 1:
+	switch b { // error: switch statement nested inside another switch
+	case 2:
+	}
+}
+
+// Good
+switch a {
+case 1:
+	handleB(b)
+}
+
+func handleB(b int) {
+	switch b {
+	case 2:
+	}
+}
+```
+
+The nearest enclosing switch-like statement in the same function decides:
+
+- `if` and `for` blocks between the two switches do not hide the nesting; the inner switch is still reported.
+- A function literal (or declaration) starts a new scope, so a switch inside a closure is not reported.
+- A `select` between the two switches is itself the nearest switch-like statement, so a switch inside it is not reported.
+- Sibling switches, one after the other, are fine. Three switches nested in a row produce two reports, one for each inner switch.
+
+This analyzer has no options.
