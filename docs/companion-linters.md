@@ -27,10 +27,10 @@ These run in golangci-lint v2 without any config: `errcheck`, `govet`, `ineffass
 | Identical expressions should not be used on both sides of a binary operator | `staticcheck` SA4000 |
 | Variables should not be self-assigned | `govet` (assign), `staticcheck` SA4018 |
 | Use "bytes.Equal" instead of "bytes.Compare" | `staticcheck` S1004 |
-| Boolean literals should not be redundant | `staticcheck` S1002 (also revive `bool-literal-in-expr`) |
-| Related "if/else if" statements should not have the same condition | `staticcheck` SA4014 (also revive `identical-ifelseif-conditions`) |
-| Package imports should be consistent and avoid redundancy | `staticcheck` ST1019 (also revive `duplicated-imports`) |
-| Nested blocks of code should not be left empty | `staticcheck` SA9003 (also revive `empty-block`) |
+| Boolean literals should not be redundant | `staticcheck` S1002 (also revive `bool-literal-in-expr`, opt-in) |
+| Related "if/else if" statements should not have the same condition | `staticcheck` SA4014 (also revive `identical-ifelseif-conditions`, opt-in) |
+| Package imports should be consistent and avoid redundancy | `staticcheck` ST1019 (also revive `duplicated-imports`, opt-in) |
+| Nested blocks of code should not be left empty | `staticcheck` SA9003 (also revive `empty-block`, opt-in) |
 
 ## Formatter
 
@@ -44,10 +44,12 @@ golangci-lint v2 runs these through `formatters`, not `linters`.
 
 ## Opt-in linters
 
-Enable each one under `linters.enable`. Two of them need more than that:
+Enable each one under `linters.enable`. Some of them need more than that, and report nothing until configured:
 
 - gocritic: `paramTypeCombine`, `boolExprSimplify` and `octalLiteral` are off by default, so add them to its `enabled-checks`.
-- revive: with no `rules` configured it runs its own default rule set, and most of the rules below are not in it. List every revive rule you want under `linters.settings.revive.rules`. `file-length-limit` also needs a non-zero `max`, because its default of 0 disables it.
+- revive: with no `rules` configured it runs its own default rule set, which includes `blank-imports`, `unused-parameter` and `var-naming`. The other revive rules below are not in it, so list every one you want under `linters.settings.revive.rules`. Setting `rules` replaces the defaults, so list the default rules you still want too. `file-length-limit` needs a non-zero `max`, because its default of 0 disables it, and `file-header` needs its header text as an argument.
+- grouper: set `linters.settings.grouper.import-require-single-import: true`. It defaults to false.
+- goheader: set `linters.settings.goheader.template` or `template-path`.
 
 | SonarLint rule | Linter |
 |---|---|
@@ -55,7 +57,7 @@ Enable each one under `linters.enable`. Two of them need more than that:
 | Context parameters should be reused instead of creating new background contexts | `contextcheck` |
 | HTTP response bodies should be closed | `bodyclose` |
 | Consecutive function parameters with the same type should be grouped | `gocritic` paramTypeCombine |
-| Blank imports should be documented | revive `blank-imports` |
+| Blank imports should be documented | revive `blank-imports` (revive default rule) |
 | Import statements should be factored into a single block | `grouper` (`import-require-single-import`) |
 | Cognitive Complexity of functions should not be too high | `gocognit`, revive `cognitive-complexity` |
 | Boolean checks should not be inverted | `gocritic` boolExprSimplify |
@@ -66,11 +68,11 @@ Enable each one under `linters.enable`. Two of them need more than that:
 | Files should not have too many lines of code | revive `file-length-limit` |
 | Lines should not be too long | `lll`, revive `line-length-limit` |
 | String literals should not be duplicated | `goconst`, revive `add-constant` |
-| Unused function parameters should be removed | `unparam`, revive `unused-parameter` |
+| Unused function parameters should be removed | `unparam`, revive `unused-parameter` (revive default rule) |
 | Octal values should not be used | `gocritic` octalLiteral |
 | Track uses of "TODO" / "FIXME" tags | `godox` |
 | Track lack of copyright and license headers | `goheader`, revive `file-header` |
-| Local variable and function parameter names should comply with a naming convention | revive `var-naming` (partial) |
+| Local variable and function parameter names should comply with a naming convention | revive `var-naming` (partial, revive default rule) |
 
 `gocritic` dupBranchBody is on by default once you enable `gocritic`. paramTypeCombine, boolExprSimplify and octalLiteral are not.
 
@@ -83,7 +85,7 @@ Enable `gosec` under `linters.enable`. The G7xx rules are taint analyses and G12
 | Credentials / secrets should not be hard-coded | G101 |
 | Constructing system command arguments from user input; OS command injection | G204, G702 |
 | Zip slip | G305 |
-| Cipher algorithms should be robust; weak hashing | G401, G405, G406, G501–G503 |
+| Cipher algorithms should be robust; weak hashing | G401, G405, G406, G501–G503, G505–G507 |
 | Server hostname / certificate verification; weak TLS protocols | G402 |
 | Cryptographic keys should be robust | G403 (RSA key length only, partial) |
 | Pseudorandom number generators | G404 |
@@ -125,6 +127,7 @@ linters:
       enabled-checks:
         - paramTypeCombine
     revive:
+      # Setting rules replaces revive's default rule set, so list every rule you want.
       rules:
         - name: identical-branches
         - name: enforce-switch-style
