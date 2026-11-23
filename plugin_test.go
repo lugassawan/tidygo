@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/analysistest"
 
@@ -189,6 +190,18 @@ func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
 				t.Errorf("BuildAnalyzers() has no %s analyzer", name)
 			}
 		})
+	}
+}
+
+// The type-aware analyzers read pass.TypesInfo, which golangci-lint only fills in
+// when the plugin asks for the types-info load mode.
+func TestGetLoadModeIsTypesInfo(t *testing.T) {
+	p, err := newPlugin(nil)
+	if err != nil {
+		t.Fatalf("newPlugin() error = %v", err)
+	}
+	if got := p.GetLoadMode(); got != register.LoadModeTypesInfo {
+		t.Errorf("GetLoadMode() = %q, want %q", got, register.LoadModeTypesInfo)
 	}
 }
 

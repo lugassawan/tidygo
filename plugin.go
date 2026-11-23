@@ -103,8 +103,12 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	}, nil
 }
 
+// GetLoadMode asks for type information: deferredcancel, txrollback, busywait and
+// atomiccreate resolve callees through pass.TypesInfo. golangci-lint skips every
+// analyzer on a package that fails to type-check, so the syntax-only analyzers go
+// quiet on non-compiling code too.
 func (p *plugin) GetLoadMode() string {
-	return register.LoadModeSyntax
+	return register.LoadModeTypesInfo
 }
 
 func newPlugin(conf any) (register.LinterPlugin, error) {
