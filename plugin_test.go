@@ -100,6 +100,23 @@ func TestBuildAnalyzersIncludesIfinitonly(t *testing.T) {
 	t.Fatal("BuildAnalyzers() has no ifinitonly analyzer")
 }
 
+func TestBuildAnalyzersIncludesNoNestedSwitch(t *testing.T) {
+	p, err := newPlugin(nil)
+	if err != nil {
+		t.Fatalf("newPlugin() error = %v", err)
+	}
+	analyzers, err := p.BuildAnalyzers()
+	if err != nil {
+		t.Fatalf("BuildAnalyzers() error = %v", err)
+	}
+	for _, a := range analyzers {
+		if a.Name == "nonestedswitch" {
+			return
+		}
+	}
+	t.Fatal("BuildAnalyzers() has no nonestedswitch analyzer")
+}
+
 func TestNewPluginPropagatesDecodeError(t *testing.T) {
 	if _, err := newPlugin(map[string]any{"bogus": true}); err == nil {
 		t.Fatal("newPlugin() error = nil, want error for unknown setting")

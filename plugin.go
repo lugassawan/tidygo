@@ -12,6 +12,7 @@ import (
 	"github.com/lugassawan/tidygo/nolateconst"
 	"github.com/lugassawan/tidygo/nolateexport"
 	"github.com/lugassawan/tidygo/nolocalstruct"
+	"github.com/lugassawan/tidygo/nonestedswitch"
 )
 
 func init() {
@@ -53,6 +54,7 @@ func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		nolateconst.Analyzer,
 		p.nolateexport,
 		nolocalstruct.Analyzer,
+		nonestedswitch.Analyzer,
 	}, nil
 }
 
