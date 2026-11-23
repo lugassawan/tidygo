@@ -18,12 +18,17 @@ import (
 const analyzerName = "nolateexport"
 
 const (
+	dupFuncKey       = "dupfunc"
+	elseIfElseKey    = "elseifelse"
+	enabledKey       = "enabled"
 	funcNameKey      = "funcname"
 	ifaceNameKey     = "ifacename"
 	handlerIface     = "Handler"
+	maxBoolOpsKey    = "maxboolops"
 	maxCasesKey      = "maxcases"
 	maxCaseLinesKey  = "maxcaselines"
 	maxKey           = "max"
+	minStatementsKey = "min-statements"
 	misspelledMaxKey = "maximum"
 	noAnonNestedKey  = "noanonnested"
 	noLocalStructKey = "nolocalstruct"
@@ -31,6 +36,16 @@ const (
 	methodColocationKey = "methodcolocation"
 	allowFileSuffixKey  = "allow-file-suffix"
 )
+
+// maxLimits lists the analyzers that share the single-limit settings block.
+var maxLimits = []struct {
+	key string
+	get func(config) int
+}{
+	{maxBoolOpsKey, func(c config) int { return c.maxboolops.Max }},
+	{maxCaseLinesKey, func(c config) int { return c.maxcaselines.Max }},
+	{maxCasesKey, func(c config) int { return c.maxcases.Max }},
+}
 
 func TestDecodeConfig(t *testing.T) {
 	t.Run("nil settings give the zero config", func(t *testing.T) {
@@ -94,76 +109,101 @@ func TestDecodeConfigIfaceName(t *testing.T) {
 	})
 }
 
-func TestDecodeConfigMaxCases(t *testing.T) {
-	t.Run("max reaches the maxcases config", func(t *testing.T) {
-		conf := map[string]any{maxCasesKey: map[string]any{maxKey: 3}}
-		got, err := decodeConfig(conf)
+func TestDecodeConfigMaxReachesConfig(t *testing.T) {
+	for _, l := range maxLimits {
+		t.Run(l.key, func(t *testing.T) {
+			got, err := decodeConfig(map[string]any{l.key: map[string]any{maxKey: 3}})
+			if err != nil {
+				t.Fatalf("decodeConfig() error = %v", err)
+			}
+			if v := l.get(got); v != 3 {
+				t.Errorf("decodeConfig() %s max = %d, want 3", l.key, v)
+			}
+			// Setting one limit must not leak into the others.
+			for _, other := range maxLimits {
+				if v := other.get(got); other.key != l.key && v != 0 {
+					t.Errorf("decodeConfig() %s max = %d, want 0 when only %s is set", other.key, v, l.key)
+				}
+			}
+		})
+	}
+}
+
+func TestDecodeConfigMaxRejectsUnknownKey(t *testing.T) {
+	for _, l := range maxLimits {
+		t.Run(l.key, func(t *testing.T) {
+			_, err := decodeConfig(map[string]any{l.key: map[string]any{"maximum": 3}})
+			if err == nil {
+				t.Fatal("decodeConfig() error = nil, want unknown-field error")
+			}
+			if !strings.Contains(err.Error(), "maximum") {
+				t.Errorf("error %q does not name the unknown field", err)
+			}
+		})
+	}
+}
+
+func TestDecodeConfigMaxRejectsNegative(t *testing.T) {
+	for _, l := range maxLimits {
+		t.Run(l.key, func(t *testing.T) {
+			_, err := decodeConfig(map[string]any{l.key: map[string]any{maxKey: -1}})
+			if err == nil {
+				t.Fatal("decodeConfig() error = nil, want negative-max error")
+			}
+			if !strings.Contains(err.Error(), l.key) {
+				t.Errorf("error %q does not name the setting", err)
+			}
+		})
+	}
+}
+
+func TestDecodeConfigElseIfElse(t *testing.T) {
+	t.Run("enabled turns the analyzer on", func(t *testing.T) {
+		got, err := decodeConfig(map[string]any{elseIfElseKey: map[string]any{enabledKey: true}})
 		if err != nil {
 			t.Fatalf("decodeConfig() error = %v", err)
 		}
-		if got.maxcases.Max != 3 {
-			t.Errorf("decodeConfig() maxcases = %+v, want Max=3", got.maxcases)
+		if !got.elseifelse {
+			t.Errorf("decodeConfig() = %+v, want elseifelse=true", got)
 		}
 	})
 
-	t.Run("unknown maxcases key is rejected", func(t *testing.T) {
-		conf := map[string]any{maxCasesKey: map[string]any{misspelledMaxKey: 3}}
-		_, err := decodeConfig(conf)
+	t.Run("unknown key is rejected", func(t *testing.T) {
+		_, err := decodeConfig(map[string]any{elseIfElseKey: map[string]any{"enable": true}})
 		if err == nil {
 			t.Fatal("decodeConfig() error = nil, want unknown-field error")
 		}
-		if !strings.Contains(err.Error(), misspelledMaxKey) {
+		if !strings.Contains(err.Error(), "enable") {
 			t.Errorf("error %q does not name the unknown field", err)
-		}
-	})
-
-	t.Run("negative max is rejected", func(t *testing.T) {
-		conf := map[string]any{maxCasesKey: map[string]any{maxKey: -1}}
-		_, err := decodeConfig(conf)
-		if err == nil {
-			t.Fatal("decodeConfig() error = nil, want negative-max error")
-		}
-		if !strings.Contains(err.Error(), maxCasesKey) {
-			t.Errorf("error %q does not name the setting", err)
 		}
 	})
 }
 
-func TestDecodeConfigMaxCaseLines(t *testing.T) {
-	t.Run("max reaches the maxcaselines config", func(t *testing.T) {
-		conf := map[string]any{maxCaseLinesKey: map[string]any{maxKey: 3}}
-		got, err := decodeConfig(conf)
+func TestBuildAnalyzersElseIfElseIsOptIn(t *testing.T) {
+	t.Run("absent by default", func(t *testing.T) {
+		if got := buildAnalyzer(t, nil, elseIfElseKey); got != nil {
+			t.Errorf("BuildAnalyzers() has %s without it being enabled", got.Name)
+		}
+	})
+
+	t.Run("absent when disabled explicitly", func(t *testing.T) {
+		conf := map[string]any{elseIfElseKey: map[string]any{enabledKey: false}}
+		if got := buildAnalyzer(t, conf, elseIfElseKey); got != nil {
+			t.Errorf("BuildAnalyzers() has %s while it is disabled", got.Name)
+		}
+	})
+
+	t.Run("present and working when enabled", func(t *testing.T) {
+		conf := map[string]any{elseIfElseKey: map[string]any{enabledKey: true}}
+		got := buildAnalyzer(t, conf, elseIfElseKey)
+		if got == nil {
+			t.Fatal("BuildAnalyzers() has no elseifelse analyzer")
+		}
+		testdata, err := filepath.Abs(filepath.Join(elseIfElseKey, "testdata"))
 		if err != nil {
-			t.Fatalf("decodeConfig() error = %v", err)
+			t.Fatalf("resolving testdata: %v", err)
 		}
-		if got.maxcaselines.Max != 3 {
-			t.Errorf("decodeConfig() maxcaselines = %+v, want Max=3", got.maxcaselines)
-		}
-		if got.maxcases.Max != 0 {
-			t.Errorf("decodeConfig() maxcases = %+v, want zero config", got.maxcases)
-		}
-	})
-
-	t.Run("unknown maxcaselines key is rejected", func(t *testing.T) {
-		conf := map[string]any{maxCaseLinesKey: map[string]any{misspelledMaxKey: 3}}
-		_, err := decodeConfig(conf)
-		if err == nil {
-			t.Fatal("decodeConfig() error = nil, want unknown-field error")
-		}
-		if !strings.Contains(err.Error(), misspelledMaxKey) {
-			t.Errorf("error %q does not name the unknown field", err)
-		}
-	})
-
-	t.Run("negative max is rejected", func(t *testing.T) {
-		conf := map[string]any{maxCaseLinesKey: map[string]any{maxKey: -1}}
-		_, err := decodeConfig(conf)
-		if err == nil {
-			t.Fatal("decodeConfig() error = nil, want negative-max error")
-		}
-		if !strings.Contains(err.Error(), maxCaseLinesKey) {
-			t.Errorf("error %q does not name the setting", err)
-		}
+		analysistest.Run(t, testdata, got, "example")
 	})
 }
 
@@ -187,12 +227,15 @@ func TestBuildAnalyzersRegistersAnalyzers(t *testing.T) {
 		"confusingop",
 		"constcond",
 		"deferredcancel",
+		"dupfunc",
 		"emptycomment",
 		"emptyfunc",
 		"ifinitonly",
 		"jwtnone",
+		"maxboolops",
 		"methodcolocation",
 		"nonestedswitch",
+		"redundantparen",
 		"txrollback",
 		"weakpwhash",
 	} {
@@ -268,6 +311,19 @@ func TestNewPluginWiresMaxCasesConfigIntoAnalyzer(t *testing.T) {
 	}
 	// The custom package only passes if max reached the analyzer.
 	testdata, err := filepath.Abs(filepath.Join("maxcases", "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "custom")
+}
+
+func TestNewPluginWiresMaxBoolOpsConfigIntoAnalyzer(t *testing.T) {
+	got := buildAnalyzer(t, map[string]any{maxBoolOpsKey: map[string]any{maxKey: 1}}, maxBoolOpsKey)
+	if got == nil {
+		t.Fatal("BuildAnalyzers() has no maxboolops analyzer")
+	}
+	// The custom package only passes if max reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(maxBoolOpsKey, "testdata"))
 	if err != nil {
 		t.Fatalf("resolving testdata: %v", err)
 	}
@@ -417,6 +473,42 @@ func TestNewPluginWiresFuncNameConfigIntoAnalyzer(t *testing.T) {
 	analysistest.Run(t, testdata, got, "includevars")
 }
 
+func TestDecodeConfigDupFunc(t *testing.T) {
+	t.Run("min-statements reaches the dupfunc config", func(t *testing.T) {
+		got, err := decodeConfig(map[string]any{dupFuncKey: map[string]any{minStatementsKey: 2}})
+		if err != nil {
+			t.Fatalf("decodeConfig() error = %v", err)
+		}
+		if got.dupfunc.MinStmts != 2 {
+			t.Errorf("decodeConfig() dupfunc = %+v, want MinStmts=2", got.dupfunc)
+		}
+	})
+
+	t.Run("unknown dupfunc key is rejected", func(t *testing.T) {
+		requireUnknownKey(t, map[string]any{dupFuncKey: map[string]any{"min-statement": 2}}, "min-statement")
+	})
+
+	t.Run("negative min-statements is rejected", func(t *testing.T) {
+		_, err := decodeConfig(map[string]any{dupFuncKey: map[string]any{minStatementsKey: -1}})
+		if err == nil {
+			t.Fatal("decodeConfig() error = nil, want negative-value error")
+		}
+		if !strings.Contains(err.Error(), dupFuncKey) {
+			t.Errorf("error %q does not name the setting", err)
+		}
+	})
+}
+
+func TestNewPluginWiresDupFuncConfigIntoAnalyzer(t *testing.T) {
+	got := buildNamed(t, map[string]any{dupFuncKey: map[string]any{minStatementsKey: 2}}, dupFuncKey)
+	// The custom package only passes if min-statements reached the analyzer.
+	testdata, err := filepath.Abs(filepath.Join(dupFuncKey, "testdata"))
+	if err != nil {
+		t.Fatalf("resolving testdata: %v", err)
+	}
+	analysistest.Run(t, testdata, got, "custom")
+}
+
 func TestDecodeConfigMethodColocation(t *testing.T) {
 	t.Run("allow-file-suffix defaults to off", func(t *testing.T) {
 		got, err := decodeConfig(nil)
@@ -456,8 +548,8 @@ func TestNewPluginWiresMethodColocationConfigIntoAnalyzer(t *testing.T) {
 	analysistest.Run(t, testdata, got, "suffix")
 }
 
-// buildNamed builds the plugin from conf and returns the analyzer called name.
-func buildNamed(t *testing.T, conf map[string]any, name string) *analysis.Analyzer {
+// buildAnalyzer builds the plugin from conf and returns the analyzer called name, or nil if it is not registered.
+func buildAnalyzer(t *testing.T, conf any, name string) *analysis.Analyzer {
 	t.Helper()
 	p, err := newPlugin(conf)
 	if err != nil {
@@ -472,8 +564,17 @@ func buildNamed(t *testing.T, conf map[string]any, name string) *analysis.Analyz
 			return a
 		}
 	}
-	t.Fatalf("BuildAnalyzers() has no %s analyzer", name)
 	return nil
+}
+
+// buildNamed is buildAnalyzer that fails the test when the analyzer is not registered.
+func buildNamed(t *testing.T, conf map[string]any, name string) *analysis.Analyzer {
+	t.Helper()
+	got := buildAnalyzer(t, conf, name)
+	if got == nil {
+		t.Fatalf("BuildAnalyzers() has no %s analyzer", name)
+	}
+	return got
 }
 
 // requireUnknownKey asserts that decoding conf fails and names the offending key.

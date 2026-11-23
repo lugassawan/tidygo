@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/lugassawan/tidygo/internal/receiver"
 )
 
 // Known GOOS and GOARCH values: a file name ending in one of them (or a GOOS_GOARCH pair) is
@@ -104,7 +106,7 @@ func typeSpecs(file *ast.File) []*ast.TypeSpec {
 }
 
 func checkMethod(pass *analysis.Pass, cfg Config, decls map[string]typeDecl, file string, fn *ast.FuncDecl) {
-	typ := recvTypeName(fn.Recv.List[0].Type)
+	typ := receiver.TypeName(fn.Recv.List[0].Type)
 	decl, ok := decls[typ]
 	if !ok || decl.exempt || decl.file == file {
 		return
@@ -161,25 +163,4 @@ func hasPlatformSuffix(name string) bool {
 // declared in <stem>.go.
 func isSuffixedSibling(file, typeFile string) bool {
 	return strings.HasPrefix(file, strings.TrimSuffix(typeFile, ".go")+"_")
-}
-
-// recvTypeName returns the base type name of a receiver expression, unwrapping
-// pointers, parentheses and generic instantiations (T, *T, T[K], *T[K, V]).
-func recvTypeName(expr ast.Expr) string {
-	for {
-		switch e := expr.(type) {
-		case *ast.Ident:
-			return e.Name
-		case *ast.StarExpr:
-			expr = e.X
-		case *ast.ParenExpr:
-			expr = e.X
-		case *ast.IndexExpr:
-			expr = e.X
-		case *ast.IndexListExpr:
-			expr = e.X
-		default:
-			return ""
-		}
-	}
 }

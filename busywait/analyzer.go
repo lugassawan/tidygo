@@ -44,12 +44,14 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 func isBusyWait(info *types.Info, loop *ast.ForStmt) bool {
-	return loop.Cond != nil &&
-		loop.Init == nil &&
-		loop.Post == nil &&
-		info.Types[loop.Cond].Value == nil && // `for true` waits on no state; constcond covers it
-		isPlainState(loop.Cond) &&
-		isSpinBody(info, loop.Body)
+	if loop.Cond == nil || loop.Init != nil || loop.Post != nil {
+		return false
+	}
+	// `for true` waits on no state; constcond covers it.
+	if info.Types[loop.Cond].Value != nil {
+		return false
+	}
+	return isPlainState(loop.Cond) && isSpinBody(info, loop.Body)
 }
 
 // isPlainState reports whether expr reads only variables, constants and

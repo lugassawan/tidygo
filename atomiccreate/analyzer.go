@@ -260,7 +260,10 @@ func (c *checker) createsNonExclusively(call *ast.CallExpr) bool {
 	flag, exact := constant.Int64Val(tv.Value)
 	create, okCreate := c.osConst(call, "O_CREATE")
 	excl, okExcl := c.osConst(call, "O_EXCL")
-	return exact && okCreate && okExcl && flag&create != 0 && flag&excl == 0
+	if !exact || !okCreate || !okExcl {
+		return false
+	}
+	return flag&create != 0 && flag&excl == 0
 }
 
 // osConst reads an integer constant of the os package the call was type-checked
