@@ -113,7 +113,7 @@ func TestBuildAnalyzersIncludesHygieneAnalyzers(t *testing.T) {
 	for _, a := range analyzers {
 		registered[a.Name] = true
 	}
-	for _, name := range []string{"constcond"} {
+	for _, name := range []string{"confusingop", "constcond"} {
 		t.Run(name, func(t *testing.T) {
 			if !registered[name] {
 				t.Fatalf("BuildAnalyzers() has no %s analyzer", name)

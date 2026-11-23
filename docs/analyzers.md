@@ -1,5 +1,25 @@
 # Analyzer Details
 
+## confusingop
+
+Reports an assignment where `=` is written directly against a unary `+`, `-`, `!` or `^`. Go parses `x =+ 1` as `x = +1`, so the program compiles and silently assigns instead of adding. The diagnostic is raised only when nothing sits between `=` and the operator; `x = +1` and an operator on the next line are accepted as deliberate. Only the first right-hand value is checked, so `a, b =-1, 2` is reported too.
+
+```go
+// Bad
+x =+ 1  // meant x += 1
+x =- 1  // meant x -= 1
+ok =!done // meant ok != done
+x =^ 1  // meant x ^= 1
+
+// Good
+x += 1
+x = -1   // a space shows the unary operator is intended
+```
+
+### Known limitations
+
+`gofmt` rewrites `x =+ 1` to `x = +1`, which hides the typo. The analyzer only sees it in source that has not been formatted yet, so run the linter before the formatter (for example in an editor on save, or in CI before `gofmt`).
+
 ## constcond
 
 Forbids `if` and `for` statements whose condition is the literal `true` or `false`. Such a condition makes one branch dead, or turns a loop into an unconditional one (`for true`) or one that never runs (`for false`). `else if` chains and `if` statements with an init clause are covered. `for {}` has no condition and is not reported.

@@ -5,6 +5,7 @@ import (
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/lugassawan/tidygo/confusingop"
 	"github.com/lugassawan/tidygo/constcond"
 	"github.com/lugassawan/tidygo/funcname"
 	"github.com/lugassawan/tidygo/ifacename"
@@ -47,6 +48,7 @@ type plugin struct {
 
 func (p *plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return []*analysis.Analyzer{
+		confusingop.Analyzer,
 		constcond.Analyzer,
 		funcname.Analyzer,
 		p.ifacename,
